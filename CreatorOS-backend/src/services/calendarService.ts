@@ -1,14 +1,23 @@
 import { db } from "../plugins/db";
 
-export const scheduleContent = async (data: any) => {
+export const scheduleContent = async (contentId: number, date: string) => {
+
+  const existing = await db.query(
+    "SELECT id FROM calendar WHERE content_id = $1 AND scheduled_date = $2 LIMIT 1",
+    [contentId, date]
+  );
+
+  if (existing.rows[0]) {
+    return existing.rows[0];
+  }
 
   const result = await db.query(
-    `INSERT INTO calendar (content_id, scheduled_date)
-     VALUES ($1,$2)
+    `INSERT INTO calendar (content_id, scheduled_date, status)
+     VALUES ($1,$2,'scheduled')
      RETURNING *`,
     [
-      data.content_id,
-      data.scheduled_date
+      contentId,
+      date
     ]
   );
 

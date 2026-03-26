@@ -5,7 +5,12 @@ export async function calendarRoutes(app: FastifyInstance) {
 
   app.post("/calendar/schedule", async (request) => {
 
-    const scheduled = await scheduleContent(request.body);
+    const { contentId, date } = request.body as {
+      contentId: number
+      date: string
+    };
+
+    const scheduled = await scheduleContent(contentId, date);
 
     return {
       success: true,

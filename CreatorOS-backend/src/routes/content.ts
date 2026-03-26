@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { saveContent, getContent } from "../services/contentService";
+import { saveContent, getContent, deleteContent } from "../services/contentService";
 
 export async function contentRoutes(app: FastifyInstance) {
 
@@ -23,6 +23,15 @@ export async function contentRoutes(app: FastifyInstance) {
       data: items
     };
 
+  });
+
+  app.delete("/content/:id", async (request) => {
+
+    const { id } = request.params as { id: string };
+
+    await deleteContent(Number(id));
+
+    return { success: true };
   });
 
 }

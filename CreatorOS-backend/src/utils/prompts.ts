@@ -1,57 +1,151 @@
-export const buildContentPrompt = (topic: string, platform: string) => {
+export const buildContentPrompt = (
+  topic: string,
+  platform: string,
+  profile?: {
+    niche?: string
+    tone?: string
+  }
+) => {
   return `
-You are an elite viral content strategist.
+You are an expert viral content strategist AND content evaluator.
 
-Your job is to create high-engagement social media content.
+You MUST return ONLY valid JSON.
+Do NOT include explanations, markdown, or text outside JSON.
 
-Topic: ${topic}
-Platform: ${platform}
+Request:
+- Topic: ${topic}
+- Platform: ${platform}
+- Niche: ${profile?.niche || "Not specified"}
+- Preferred Tone: ${profile?.tone || "Not specified"}
 
-Create content that follows viral frameworks used by creators like MrBeast and Alex Hormozi.
+Your responsibilities:
+1. Generate high-performing social content inspired by creators like MrBeast and Alex Hormozi.
+2. Evaluate your own output using the scoring rubric below.
 
-Optimize for:
-- high curiosity hooks
-- strong emotional triggers
-- pattern interrupts
-- clear benefit-driven messaging
+Scoring rubric:
+- Hook Strength (0-30)
+  Evaluate curiosity, boldness, and relatability.
+- Emotional Intensity (0-20)
+  Evaluate emotional triggers, storytelling, and relatability.
+- Engagement Potential (0-25)
+  Evaluate the number and quality of hooks and captions.
+- Content Structure (0-15)
+  Evaluate script clarity, readability, and flow.
+- Platform Fit (0-10)
+  Evaluate optimization for the target platform.
 
-Hook frameworks to use:
+Total score must be between 0 and 100.
+Do not always give a high score. Score honestly based on quality.
 
-1. Curiosity Gap
-   Example: "I tested 10 productivity hacks and only one actually worked."
+Content requirements:
+- Script must be engaging, clear, and storytelling-based.
+- Match the content angle to the niche when it is provided.
+- Match the voice to the preferred tone when it is provided.
+- Hooks must be short, punchy, and curiosity-driven.
+- Provide exactly 5 hooks.
+- Provide exactly 3 captions.
+- Provide exactly 2 threads.
 
-2. Bold Claim
-   Example: "If you're still doing this in 2025, you're wasting your time."
-
-3. Challenge
-   Example: "Try this 5-minute morning routine for 7 days."
-
-4. Contrarian
-   Example: "Most productivity advice is wrong."
-
-5. Fast Result
-   Example: "This simple trick doubled my productivity."
-
-Generate:
-
-1 YouTube script (short, engaging, storytelling)
-5 viral hooks using different frameworks
-3 social media captions
-2 tweet threads
-
-Each hook must be short, punchy, curiosity-driven, and under 20 words.
-
-Return ONLY valid JSON.
-
-Format exactly like this:
-
+Return ONLY this JSON shape:
 {
-  "script": "...",
-  "hooks": ["...", "...", "...", "...", "..."],
-  "captions": ["...", "...", "..."],
-  "threads": ["...", "..."]
+  "script": "string",
+  "hooks": ["string", "string", "string", "string", "string"],
+  "captions": ["string", "string", "string"],
+  "threads": ["string", "string"],
+  "score": 0,
+  "analysis": {
+    "hook_strength": 0,
+    "emotional_intensity": 0,
+    "engagement": 0,
+    "structure": 0,
+    "platform_fit": 0,
+    "summary": "string",
+    "improvements": ["string"]
+  }
 }
 
-Do not include explanations or markdown.
+Rules:
+- score must reflect the rubric and stay between 0 and 100
+- analysis scores must align logically with the total score
+- improvements must contain at least 1 actionable improvement
+- hooks, captions, threads, and improvements must be JSON arrays of strings
+- no markdown
+- no code fences
+- no explanation
+- no trailing text
+
+If your response contains anything outside JSON, it is invalid.
+`;
+};
+
+export const buildImprovePrompt = (
+  content: {
+    topic: string
+    platform: string
+    script?: string
+    hooks?: string[]
+    captions?: string[]
+    threads?: string[]
+    score?: number
+    analysis?: {
+      summary?: string
+      improvements?: string[]
+    }
+  }
+) => {
+  return `
+You are an expert viral content strategist AND content evaluator.
+
+Your task is to improve an existing content draft while keeping the same topic and platform.
+Return ONLY valid JSON.
+Do NOT include explanations, markdown, or text outside JSON.
+
+Original content:
+- Topic: ${content.topic}
+- Platform: ${content.platform}
+- Script: ${content.script ?? ""}
+- Hooks: ${(content.hooks ?? []).join(" | ")}
+- Captions: ${(content.captions ?? []).join(" | ")}
+- Threads: ${(content.threads ?? []).join(" | ")}
+- Previous score: ${content.score ?? 0}
+- Previous analysis summary: ${content.analysis?.summary ?? ""}
+- Suggested improvements: ${(content.analysis?.improvements ?? []).join(" | ")}
+
+Improve the content so it is stronger, clearer, and more engaging than the original.
+Keep the tone optimized for ${content.platform}.
+
+Scoring rubric:
+- Hook Strength (0-30)
+- Emotional Intensity (0-20)
+- Engagement Potential (0-25)
+- Content Structure (0-15)
+- Platform Fit (0-10)
+
+Return ONLY this JSON shape:
+{
+  "script": "string",
+  "hooks": ["string", "string", "string", "string", "string"],
+  "captions": ["string", "string", "string"],
+  "threads": ["string", "string"],
+  "score": 0,
+  "analysis": {
+    "hook_strength": 0,
+    "emotional_intensity": 0,
+    "engagement": 0,
+    "structure": 0,
+    "platform_fit": 0,
+    "summary": "string",
+    "improvements": ["string"]
+  }
+}
+
+Rules:
+- hooks must be exactly 5 items
+- captions must be exactly 3 items
+- threads must be exactly 2 items
+- score must be between 0 and 100
+- no markdown
+- no code fences
+- no explanation
 `;
 };

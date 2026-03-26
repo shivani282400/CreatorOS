@@ -2,6 +2,7 @@ import { generateWithGroq } from "./groq";
 import { generateWithOpenRouter } from "./openrouter";
 import { generateWithTogether } from "./together";
 import { AIContentSchema, type AIContent } from "../../utils/aiSchema";
+import { cleanAIOutput } from "../../utils/cleanAIOutput";
 
 const MAX_PROVIDER_ATTEMPTS = 3;
 
@@ -11,7 +12,17 @@ const AI_RESPONSE_SCHEMA = `{
   "script": "string",
   "hooks": ["string"],
   "captions": ["string"],
-  "threads": ["string"]
+  "threads": ["string"],
+  "score": 0,
+  "analysis": {
+    "hook_strength": 0,
+    "emotional_intensity": 0,
+    "engagement": 0,
+    "structure": 0,
+    "platform_fit": 0,
+    "summary": "string",
+    "improvements": ["string"]
+  }
 }`;
 
 const splitListString = (value: string): string[] => {
@@ -19,29 +30,6 @@ const splitListString = (value: string): string[] => {
     .split("\n")
     .map((item) => item.replace(/^[\s\-*0-9.)]+/, "").trim())
     .filter(Boolean);
-};
-
-const extractJsonString = (raw: string): string => {
-  const trimmed = raw.trim();
-
-  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-    return trimmed;
-  }
-
-  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-
-  if (fencedMatch?.[1]) {
-    return fencedMatch[1].trim();
-  }
-
-  const firstBrace = trimmed.indexOf("{");
-  const lastBrace = trimmed.lastIndexOf("}");
-
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    return trimmed.slice(firstBrace, lastBrace + 1);
-  }
-
-  return trimmed;
 };
 
 const normalizeAIResponse = (value: unknown): unknown => {
@@ -66,11 +54,57 @@ const normalizeAIResponse = (value: unknown): unknown => {
     return [];
   };
 
+  const normalizeScore = (field: unknown): number => {
+    if (typeof field === "number" && Number.isFinite(field)) {
+      return Math.max(0, Math.min(100, Math.round(field)));
+    }
+
+    if (typeof field === "string") {
+      const parsed = Number(field);
+
+      if (Number.isFinite(parsed)) {
+        return Math.max(0, Math.min(100, Math.round(parsed)));
+      }
+    }
+
+    return 0;
+  };
+
+  const analysisSource = content.analysis && typeof content.analysis === "object"
+    ? content.analysis as Record<string, unknown>
+    : {};
+
+  const normalizeAnalysisScore = (field: unknown, max: number): number => {
+    if (typeof field === "number" && Number.isFinite(field)) {
+      return Math.max(0, Math.min(max, Math.round(field)));
+    }
+
+    if (typeof field === "string") {
+      const parsed = Number(field);
+
+      if (Number.isFinite(parsed)) {
+        return Math.max(0, Math.min(max, Math.round(parsed)));
+      }
+    }
+
+    return 0;
+  };
+
   return {
     script: typeof content.script === "string" ? content.script.trim() : "",
     hooks: normalizeList(content.hooks),
     captions: normalizeList(content.captions),
-    threads: normalizeList(content.threads)
+    threads: normalizeList(content.threads),
+    score: normalizeScore(content.score),
+    analysis: {
+      hook_strength: normalizeAnalysisScore(analysisSource.hook_strength, 30),
+      emotional_intensity: normalizeAnalysisScore(analysisSource.emotional_intensity, 20),
+      engagement: normalizeAnalysisScore(analysisSource.engagement, 25),
+      structure: normalizeAnalysisScore(analysisSource.structure, 15),
+      platform_fit: normalizeAnalysisScore(analysisSource.platform_fit, 10),
+      summary: typeof analysisSource.summary === "string" ? analysisSource.summary.trim() : "",
+      improvements: normalizeList(analysisSource.improvements)
+    }
   };
 };
 
@@ -82,7 +116,7 @@ const parseAIResponse = (raw: string | null | undefined): AIContent => {
   let parsed: unknown;
 
   try {
-    parsed = JSON.parse(extractJsonString(raw));
+    parsed = JSON.parse(cleanAIOutput(raw));
   } catch (err) {
     console.error("AI returned invalid JSON:", raw);
     throw new Error("AI returned invalid JSON");
@@ -128,6 +162,9 @@ Rules:
 - No explanation
 - hooks, captions, and threads must be JSON arrays of strings
 - script must be a string
+- score must be a number from 0 to 100
+- analysis must include hook_strength, emotional_intensity, engagement, structure, platform_fit, summary, improvements
+- improvements must be a JSON array of strings
 
 ${responseContext}
 Fix the response and return only corrected JSON.`;

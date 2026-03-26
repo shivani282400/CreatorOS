@@ -11,27 +11,27 @@ import {
   
   import { NavLink } from "react-router-dom"
   
-  export default function Sidebar() {
-  
-    const navClass =
-      "flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-[#1D212B] hover:text-white transition"
-  
-    const activeClass =
-      "bg-[#1D212B] text-white"
+export default function Sidebar() {
+
+  const navClass =
+      "flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-gray-300 hover:bg-white/[0.05] hover:text-white transition-all duration-200"
+
+  const activeClass =
+      "bg-white/[0.08] text-white"
   
     return (
   
-      <div className="w-64 glass-panel p-6 flex flex-col border-r border-gray-800">
+      <div className="w-72 border-r border-white/5 bg-[var(--bg-secondary)]/90 p-6 backdrop-blur-xl">
   
         {/* Logo */}
   
         <div className="mb-10">
   
-          <h1 className="text-xl font-bold tracking-wide">
+          <h1 className="text-2xl font-semibold tracking-tight">
             CreatorOS
           </h1>
-  
-          <p className="text-xs text-gray-400">
+
+          <p className="mt-1 text-xs uppercase tracking-[0.24em] text-gray-500">
             AI Creator System
           </p>
   
@@ -97,23 +97,23 @@ import {
   
         <div className="mt-10">
   
-          <p className="text-xs text-gray-500 mb-3 uppercase tracking-wide">
+          <p className="mb-3 text-xs uppercase tracking-[0.24em] text-gray-500">
             Future Modules
           </p>
-  
-          <div className="space-y-2 text-gray-500 text-sm">
-  
-            <div className="flex items-center gap-3">
+
+          <div className="space-y-3 text-sm text-gray-500">
+
+            <div className="flex items-center gap-3 rounded-[10px] px-3 py-2">
               <Rocket size={16}/>
               Strategy
             </div>
-  
-            <div className="flex items-center gap-3">
+
+            <div className="flex items-center gap-3 rounded-[10px] px-3 py-2">
               <BarChart3 size={16}/>
               Performance
             </div>
-  
-            <div className="flex items-center gap-3">
+
+            <div className="flex items-center gap-3 rounded-[10px] px-3 py-2">
               <Cpu size={16}/>
               Automation
             </div>
@@ -128,7 +128,7 @@ import {
   
           <NavLink
             to="/generate"
-            className="block text-center btn-primary"
+            className="block text-center btn-primary transition-all duration-200 hover:scale-[1.02] active:scale-95"
           >
             + Create Content
           </NavLink>

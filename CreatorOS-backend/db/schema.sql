@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS content (
   hooks TEXT[],
   captions TEXT[],
   threads TEXT[],
+  score INTEGER,
+  analysis JSONB,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
