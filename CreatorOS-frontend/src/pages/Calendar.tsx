@@ -3,6 +3,7 @@ import { Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import PageWrapper from "../components/PageWrapper";
+import { authFetch } from "../utils/api";
 
 type ContentItem = {
   id: number
@@ -108,8 +109,8 @@ export default function CalendarPage() {
 
   const fetchCalendar = async () => {
     const [contentRes, calendarRes] = await Promise.all([
-      fetch("http://localhost:4000/content"),
-      fetch("http://localhost:4000/calendar")
+      authFetch("/content"),
+      authFetch("/calendar")
     ]);
 
     const contentResult = await contentRes.json();
@@ -231,7 +232,7 @@ export default function CalendarPage() {
       return;
     }
 
-    await fetch("http://localhost:4000/calendar/schedule", {
+    await authFetch("/calendar/schedule", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

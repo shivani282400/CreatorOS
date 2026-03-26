@@ -4,6 +4,7 @@ import MainLayout from "../layouts/MainLayout"
 import { useNavigate } from "react-router-dom"
 import { getAIScore } from "../utils/aiScore"
 import PageWrapper from "../components/PageWrapper";
+import { authFetch } from "../utils/api";
 
 type LibraryItem = {
   id: number
@@ -44,7 +45,7 @@ export default function Library() {
 
     try {
 
-      const res = await fetch("http://localhost:4000/content")
+      const res = await authFetch("/content")
       const result = await res.json()
 
       setContent(result.data)
@@ -75,7 +76,7 @@ export default function Library() {
     setLoadingId(item.id)
 
     try {
-      const res = await fetch("http://localhost:4000/ai/generate", {
+      const res = await authFetch("/ai/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -107,7 +108,7 @@ export default function Library() {
     try {
       setLoadingId(content.id)
 
-      const res = await fetch("http://localhost:4000/ai/improve", {
+      const res = await authFetch("/ai/improve", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -130,7 +131,7 @@ export default function Library() {
   }
 
   const handleDelete = async (id: number) => {
-    await fetch(`http://localhost:4000/content/${id}`, { method: "DELETE" });
+    await authFetch(`/content/${id}`, { method: "DELETE" });
     if (selected?.id === id) {
       setSelected(null);
     }
@@ -152,7 +153,7 @@ export default function Library() {
       return;
     }
 
-    await fetch("http://localhost:4000/calendar/schedule", {
+    await authFetch("/calendar/schedule", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

@@ -18,3 +18,13 @@ CREATE TABLE IF NOT EXISTS calendar (
   status TEXT DEFAULT 'scheduled',
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  niche TEXT,
+  tone TEXT,
+  platform TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

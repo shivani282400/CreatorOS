@@ -6,6 +6,7 @@ import Onboarding from "./pages/Onboarding"
 import Library from "./pages/Library"
 import Calendar from "./pages/Calendar"
 import Login from "./pages/Login"
+import Profile from "./pages/Profile"
 function App() {
 
   return (
@@ -14,11 +15,14 @@ function App() {
 <Routes>
 
 <Route path="/" element={<Login />} />
+<Route path="/login" element={<Login />} />
 <Route path="/onboarding" element={<Onboarding />} />
 <Route path="/dashboard" element={<Dashboard />} />
 <Route path="/generate" element={<Generate />} />
 <Route path="/library" element={<Library />} />
 <Route path="/calendar" element={<Calendar />} />
+<Route path="/settings" element={<Profile />} />
+<Route path="/profile" element={<Profile />} />
 
 </Routes>
 

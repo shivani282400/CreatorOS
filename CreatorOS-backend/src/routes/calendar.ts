@@ -3,7 +3,7 @@ import { scheduleContent, getCalendar } from "../services/calendarService";
 
 export async function calendarRoutes(app: FastifyInstance) {
 
-  app.post("/calendar/schedule", async (request) => {
+  app.post("/calendar/schedule", { preHandler: [app.authenticate] }, async (request) => {
 
     const { contentId, date } = request.body as {
       contentId: number
@@ -19,7 +19,7 @@ export async function calendarRoutes(app: FastifyInstance) {
 
   });
 
-  app.get("/calendar", async () => {
+  app.get("/calendar", { preHandler: [app.authenticate] }, async () => {
 
     const items = await getCalendar();
 

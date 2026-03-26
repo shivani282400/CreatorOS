@@ -1,25 +1,36 @@
 import { FastifyInstance } from "fastify";
 import { generateAI } from "../services/ai/aiService";
 import { saveContent, updateContent } from "../services/contentService";
+import { getUserById } from "../services/userService";
 import type { AIContent } from "../utils/aiSchema";
 import { buildContentPrompt, buildImprovePrompt } from "../utils/prompts";
 
 export async function aiRoutes(app: FastifyInstance) {
 
-  app.post("/ai/generate", async (request, reply) => {
+  app.post("/ai/generate", { preHandler: [app.authenticate] }, async (request, reply) => {
 
-    const { topic, platform, save = true } = request.body as {
+    const { topic, platform, niche, tone, save = true } = request.body as {
       topic: string
-      platform: string
+      platform?: string
       niche?: string
       tone?: string
       save?: boolean
     };
 
-    const prompt = buildContentPrompt(topic, platform, {
-      niche: (request.body as any).niche,
-      tone: (request.body as any).tone
-    });
+    const userProfile = await getUserById(request.user.id);
+
+    if (!userProfile) {
+      return reply.status(404).send({
+        success: false,
+        error: "User not found"
+      });
+    }
+
+    const resolvedPlatform = platform || userProfile.platform || "YouTube";
+    const resolvedNiche = niche || userProfile.niche || "general";
+    const resolvedTone = tone || userProfile.tone || "educational";
+
+    const prompt = buildContentPrompt(topic, resolvedPlatform, resolvedNiche, resolvedTone);
 
     try {
       const content: AIContent = await generateAI(prompt);
@@ -33,7 +44,7 @@ export async function aiRoutes(app: FastifyInstance) {
 
       const savedContent = await saveContent({
         topic,
-        platform,
+        platform: resolvedPlatform,
         script: content.script,
         hooks: content.hooks,
         captions: content.captions,
@@ -54,7 +65,7 @@ export async function aiRoutes(app: FastifyInstance) {
     }
   });
 
-  app.post("/ai/improve", async (request, reply) => {
+  app.post("/ai/improve", { preHandler: [app.authenticate] }, async (request, reply) => {
 
     const { content } = request.body as {
       content: {

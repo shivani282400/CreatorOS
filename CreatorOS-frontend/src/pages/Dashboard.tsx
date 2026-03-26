@@ -10,6 +10,7 @@ import {
 import { useNavigate } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
 import PageWrapper from "../components/PageWrapper"
+import { authFetch } from "../utils/api"
 
 type ContentItem = {
   id: number
@@ -116,8 +117,8 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
       try {
         const [contentRes, calendarRes] = await Promise.all([
-          fetch("http://localhost:4000/content"),
-          fetch("http://localhost:4000/calendar")
+          authFetch("/content"),
+          authFetch("/calendar")
         ])
 
         const [contentResult, calendarResult] = await Promise.all([

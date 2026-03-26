@@ -7,6 +7,8 @@ type OnboardingOptionCardProps = {
   onClick: () => void
   icon?: LucideIcon
   emoji?: string
+  badge?: string
+  badgeClassName?: string
 }
 
 export default function OnboardingOptionCard({
@@ -15,7 +17,9 @@ export default function OnboardingOptionCard({
   selected,
   onClick,
   icon: Icon,
-  emoji
+  emoji,
+  badge,
+  badgeClassName
 }: OnboardingOptionCardProps) {
   return (
     <button
@@ -25,8 +29,10 @@ export default function OnboardingOptionCard({
         selected ? "border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/30" : ""
       }`}
     >
-      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500/25 to-indigo-500/25 text-white">
-        {Icon ? <Icon className="h-6 w-6" /> : <span className="text-2xl">{emoji}</span>}
+      <div
+        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500/25 to-indigo-500/25 text-white ${badgeClassName ?? ""}`}
+      >
+        {Icon ? <Icon className="h-6 w-6" /> : badge ? <span className="text-xl font-semibold">{badge}</span> : <span className="text-2xl">{emoji}</span>}
       </div>
 
       <div className="space-y-1">

@@ -3,7 +3,7 @@ import { saveContent, getContent, deleteContent } from "../services/contentServi
 
 export async function contentRoutes(app: FastifyInstance) {
 
-  app.post("/content", async (request) => {
+  app.post("/content", { preHandler: [app.authenticate] }, async (request) => {
 
     const saved = await saveContent(request.body);
 
@@ -14,7 +14,7 @@ export async function contentRoutes(app: FastifyInstance) {
 
   });
 
-  app.get("/content", async () => {
+  app.get("/content", { preHandler: [app.authenticate] }, async () => {
 
     const items = await getContent();
 
@@ -25,7 +25,7 @@ export async function contentRoutes(app: FastifyInstance) {
 
   });
 
-  app.delete("/content/:id", async (request) => {
+  app.delete("/content/:id", { preHandler: [app.authenticate] }, async (request) => {
 
     const { id } = request.params as { id: string };
 

@@ -1,22 +1,22 @@
 export const buildContentPrompt = (
   topic: string,
   platform: string,
-  profile?: {
-    niche?: string
-    tone?: string
-  }
+  niche = "general",
+  tone = "educational"
 ) => {
   return `
-You are an expert viral content strategist AND content evaluator.
+You are an expert content creator and content evaluator.
 
 You MUST return ONLY valid JSON.
 Do NOT include explanations, markdown, or text outside JSON.
 
-Request:
-- Topic: ${topic}
-- Platform: ${platform}
-- Niche: ${profile?.niche || "Not specified"}
-- Preferred Tone: ${profile?.tone || "Not specified"}
+Generate ${platform} content for:
+
+Topic: "${topic}"
+
+Creator Profile:
+- Niche: ${niche || "general"}
+- Tone: ${tone || "educational"}
 
 Your responsibilities:
 1. Generate high-performing social content inspired by creators like MrBeast and Alex Hormozi.
@@ -39,8 +39,13 @@ Do not always give a high score. Score honestly based on quality.
 
 Content requirements:
 - Script must be engaging, clear, and storytelling-based.
-- Match the content angle to the niche when it is provided.
-- Match the voice to the preferred tone when it is provided.
+- Adapt style to the niche.
+- Match the requested tone strictly.
+- Make content highly engaging and platform-aware.
+- Examples:
+  - Fashion -> aesthetic, trendy, relatable
+  - Funny -> humorous, witty, light
+  - Educational -> clear, informative
 - Hooks must be short, punchy, and curiosity-driven.
 - Provide exactly 5 hooks.
 - Provide exactly 3 captions.

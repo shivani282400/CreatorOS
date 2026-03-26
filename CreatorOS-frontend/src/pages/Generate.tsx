@@ -14,15 +14,18 @@ import {
 import { toast } from "sonner"
 import MainLayout from "../layouts/MainLayout"
 import PageWrapper from "../components/PageWrapper"
+import { authFetch } from "../utils/api"
 
-const ONBOARDING_STORAGE_KEY = "creatorosOnboarding"
+const PROFILE_STORAGE_KEY = "creator_profile"
 
 const getOnboardingPreferences = () => {
   if (typeof window === "undefined") {
     return null
   }
 
-  const raw = window.localStorage.getItem(ONBOARDING_STORAGE_KEY)
+  const raw =
+    window.localStorage.getItem(PROFILE_STORAGE_KEY) ??
+    window.localStorage.getItem("creatorosOnboarding")
 
   if (!raw) {
     return null
@@ -159,16 +162,16 @@ export default function Generate() {
     setLoading(true)
 
     try {
-      const res = await fetch("http://localhost:4000/ai/generate", {
+      const res = await authFetch("/ai/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
           topic,
-          platform,
-          niche,
-          tone,
+          platform: platform || onboardingPreferences?.platform || "YouTube",
+          niche: niche || onboardingPreferences?.niche || "general",
+          tone: tone || onboardingPreferences?.tone || "educational",
           save: false
         })
       })
@@ -208,7 +211,7 @@ export default function Generate() {
     setSaving(true)
 
     try {
-      const res = await fetch("http://localhost:4000/content", {
+      const res = await authFetch("/content", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
