@@ -1,11 +1,18 @@
 import { FastifyInstance } from "fastify";
-import { saveContent, getContent, deleteContent, searchContent } from "../services/contentService";
+import {
+  saveContent,
+  getContent,
+  deleteContent,
+  searchContent,
+  getUploadedContent,
+  getTopPerformingContent
+} from "../services/contentService";
 
 export async function contentRoutes(app: FastifyInstance) {
 
   app.post("/content", { preHandler: [app.authenticate] }, async (request) => {
 
-    const saved = await saveContent(request.body);
+    const saved = await saveContent(request.body, request.user.id);
 
     return {
       success: true,
@@ -45,6 +52,24 @@ export async function contentRoutes(app: FastifyInstance) {
         error: "Semantic search failed"
       });
     }
+  });
+
+  app.get("/content/uploaded", { preHandler: [app.authenticate] }, async (request) => {
+    const items = await getUploadedContent(app, request.user.id);
+
+    return {
+      success: true,
+      data: items
+    };
+  });
+
+  app.get("/content/top-performing", { preHandler: [app.authenticate] }, async (request) => {
+    const items = await getTopPerformingContent(request.user.id);
+
+    return {
+      success: true,
+      data: items
+    };
   });
 
   app.delete("/content/:id", { preHandler: [app.authenticate] }, async (request) => {

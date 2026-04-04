@@ -5,6 +5,7 @@ import {
     Calendar,
     Settings,
     BarChart3,
+    Upload,
     Rocket,
     Cpu
   } from "lucide-react"
@@ -79,6 +80,16 @@ export default function Sidebar() {
           >
             <Calendar size={18}/>
             Calendar
+          </NavLink>
+
+          <NavLink
+            to="/uploaded"
+            className={({isActive}) =>
+              `${navClass} ${isActive ? activeClass : ""}`
+            }
+          >
+            <Upload size={18}/>
+            Uploaded
           </NavLink>
   
           <NavLink

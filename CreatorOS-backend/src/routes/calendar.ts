@@ -10,7 +10,7 @@ export async function calendarRoutes(app: FastifyInstance) {
       date: string
     };
 
-    const scheduled = await scheduleContent(contentId, date);
+    const scheduled = await scheduleContent(app, contentId, date, request.user.id);
 
     return {
       success: true,

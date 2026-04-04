@@ -1,8 +1,24 @@
+import { FastifyInstance } from "fastify";
 import { db } from "../plugins/db";
 
-export const scheduleContent = async (contentId: number, date: string) => {
+export const scheduleContent = async (
+  app: FastifyInstance,
+  contentId: number,
+  date: string,
+  userId: number
+) => {
+  const client = (app as FastifyInstance & { pg?: typeof db }).pg ?? db;
 
-  const existing = await db.query(
+  await client.query(
+    `
+    UPDATE content
+    SET user_id = $2
+    WHERE id = $1 AND user_id IS NULL
+    `,
+    [contentId, userId]
+  );
+
+  const existing = await client.query(
     "SELECT id FROM calendar WHERE content_id = $1 AND scheduled_date = $2 LIMIT 1",
     [contentId, date]
   );
@@ -11,7 +27,7 @@ export const scheduleContent = async (contentId: number, date: string) => {
     return existing.rows[0];
   }
 
-  const result = await db.query(
+  const result = await client.query(
     `INSERT INTO calendar (content_id, scheduled_date, status)
      VALUES ($1,$2,'scheduled')
      RETURNING *`,

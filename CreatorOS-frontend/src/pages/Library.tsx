@@ -104,6 +104,47 @@ export default function Library() {
     }
   }
 
+  const generateLike = async (item: LibraryItem) => {
+    setLoadingId(item.id)
+
+    try {
+      const res = await authFetch("/ai/generate-like", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contentId: item.id
+        })
+      })
+
+      const result = await res.json()
+
+      if (!result.success) {
+        throw new Error("Generate like this failed")
+      }
+
+      setHovered(null)
+      setSelected({
+        id: item.id,
+        topic: `${item.topic} — Variation`,
+        platform: item.platform,
+        script: result.data.script,
+        hooks: result.data.hooks,
+        captions: result.data.captions,
+        threads: result.data.threads,
+        score: result.data.score,
+        analysis: result.data.analysis,
+        created_at: new Date().toISOString()
+      })
+    } catch (err) {
+      console.error(err)
+      alert("Could not generate a similar variation")
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
   const handleImprove = async (content: LibraryItem) => {
     try {
       setLoadingId(content.id)
@@ -357,6 +398,17 @@ export default function Library() {
                     className="text-sm text-gray-400 hover:text-white transition disabled:cursor-wait disabled:opacity-60"
                   >
                     {loadingId === item.id ? "Generating..." : "🔁 Regenerate"}
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      generateLike(item);
+                    }}
+                    disabled={loadingId === item.id}
+                    className="rounded bg-white/10 px-3 py-1 text-sm text-white/85 transition hover:bg-white/15 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {loadingId === item.id ? "Working..." : "✨ Generate Like This"}
                   </button>
 
                   {score < 75 && (

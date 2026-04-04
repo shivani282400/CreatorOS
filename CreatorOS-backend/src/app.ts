@@ -3,6 +3,8 @@ import cors from "@fastify/cors";
 import { aiRoutes } from "./routes/ai";
 import { contentRoutes } from "./routes/content";
 import { calendarRoutes } from "./routes/calendar";
+import { memoryRoutes } from "./routes/memory";
+import { performanceRoutes } from "./routes/performance";
 import jwt from "@fastify/jwt";
 import { authRoutes } from "./routes/auth";
 import { userRoutes } from "./routes/user";
@@ -33,6 +35,8 @@ export const buildApp = () => {
   app.register(aiRoutes);
   app.register(contentRoutes);
   app.register(calendarRoutes);
+  app.register(memoryRoutes);
+  app.register(performanceRoutes);
 
   app.get("/health", async () => {
     return { status: "ok" };

@@ -5,8 +5,11 @@ export const db = new Pool({
 });
 
 const schemaSql = `
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE IF NOT EXISTS content (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER,
   topic TEXT,
   platform TEXT,
   script TEXT,
@@ -22,6 +25,11 @@ CREATE TABLE IF NOT EXISTS calendar (
   id SERIAL PRIMARY KEY,
   content_id INTEGER,
   scheduled_date DATE,
+  published_at TIMESTAMP,
+  views INTEGER DEFAULT 0,
+  likes INTEGER DEFAULT 0,
+  comments INTEGER DEFAULT 0,
+  shares INTEGER DEFAULT 0,
   status TEXT DEFAULT 'scheduled',
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -38,6 +46,26 @@ CREATE TABLE IF NOT EXISTS users (
 
 ALTER TABLE content ADD COLUMN IF NOT EXISTS score INTEGER;
 ALTER TABLE content ADD COLUMN IF NOT EXISTS analysis JSONB;
+ALTER TABLE content ADD COLUMN IF NOT EXISTS embedding VECTOR(1536);
+ALTER TABLE content ADD COLUMN IF NOT EXISTS user_id INTEGER;
+ALTER TABLE calendar ADD COLUMN IF NOT EXISTS published_at TIMESTAMP;
+ALTER TABLE calendar ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;
+ALTER TABLE calendar ADD COLUMN IF NOT EXISTS likes INTEGER DEFAULT 0;
+ALTER TABLE calendar ADD COLUMN IF NOT EXISTS comments INTEGER DEFAULT 0;
+ALTER TABLE calendar ADD COLUMN IF NOT EXISTS shares INTEGER DEFAULT 0;
+ALTER TABLE calendar ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'scheduled';
+
+CREATE TABLE IF NOT EXISTS memory_embeddings (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  content_id INTEGER,
+  type TEXT NOT NULL,
+  text TEXT NOT NULL,
+  embedding VECTOR(1536),
+  score FLOAT,
+  metadata JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 `;
 
 let initPromise: Promise<void> | null = null;

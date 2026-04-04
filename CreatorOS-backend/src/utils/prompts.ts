@@ -2,7 +2,8 @@ export const buildContentPrompt = (
   topic: string,
   platform: string,
   niche = "general",
-  tone = "educational"
+  tone = "educational",
+  context = ""
 ) => {
   return `
 You are an expert content creator and content evaluator.
@@ -17,6 +18,10 @@ Topic: "${topic}"
 Creator Profile:
 - Niche: ${niche || "general"}
 - Tone: ${tone || "educational"}
+- Platform: ${platform}
+
+Retrieved memory context:
+${context || "No relevant memory available."}
 
 Your responsibilities:
 1. Generate high-performing social content inspired by creators like MrBeast and Alex Hormozi.
@@ -96,7 +101,8 @@ export const buildImprovePrompt = (
       summary?: string
       improvements?: string[]
     }
-  }
+  },
+  context = ""
 ) => {
   return `
 You are an expert viral content strategist AND content evaluator.
@@ -118,6 +124,8 @@ Original content:
 
 Improve the content so it is stronger, clearer, and more engaging than the original.
 Keep the tone optimized for ${content.platform}.
+Use this retrieved memory context to stay aligned with the creator's strongest historical patterns:
+${context || "No relevant memory available."}
 
 Scoring rubric:
 - Hook Strength (0-30)

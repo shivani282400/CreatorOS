@@ -5,6 +5,7 @@ import Generate from "./pages/Generate"
 import Onboarding from "./pages/Onboarding"
 import Library from "./pages/Library"
 import Calendar from "./pages/Calendar"
+import Uploaded from "./pages/Uploaded"
 import Login from "./pages/Login"
 import Profile from "./pages/Profile"
 function App() {
@@ -21,6 +22,7 @@ function App() {
 <Route path="/generate" element={<Generate />} />
 <Route path="/library" element={<Library />} />
 <Route path="/calendar" element={<Calendar />} />
+<Route path="/uploaded" element={<Uploaded />} />
 <Route path="/settings" element={<Profile />} />
 <Route path="/profile" element={<Profile />} />
 
