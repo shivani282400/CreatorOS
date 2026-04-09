@@ -21,6 +21,7 @@ function App() {
 <Route path="/dashboard" element={<Dashboard />} />
 <Route path="/generate" element={<Generate />} />
 <Route path="/library" element={<Library />} />
+<Route path="/library/:id" element={<Library />} />
 <Route path="/calendar" element={<Calendar />} />
 <Route path="/uploaded" element={<Uploaded />} />
 <Route path="/settings" element={<Profile />} />

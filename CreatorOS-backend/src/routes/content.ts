@@ -21,9 +21,9 @@ export async function contentRoutes(app: FastifyInstance) {
 
   });
 
-  app.get("/content", { preHandler: [app.authenticate] }, async () => {
+  app.get("/content", { preHandler: [app.authenticate] }, async (request) => {
 
-    const items = await getContent();
+    const items = await getContent(request.user.id);
 
     return {
       success: true,
@@ -40,7 +40,7 @@ export async function contentRoutes(app: FastifyInstance) {
     }
 
     try {
-      const results = await searchContent(q);
+      const results = await searchContent(q, request.user.id);
 
       return {
         success: true,
@@ -76,7 +76,14 @@ export async function contentRoutes(app: FastifyInstance) {
 
     const { id } = request.params as { id: string };
 
-    await deleteContent(Number(id));
+    const deleted = await deleteContent(Number(id), request.user.id);
+
+    if (!deleted) {
+      return {
+        success: false,
+        error: "Content not found"
+      };
+    }
 
     return { success: true };
   });

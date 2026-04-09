@@ -19,9 +19,9 @@ export async function calendarRoutes(app: FastifyInstance) {
 
   });
 
-  app.get("/calendar", { preHandler: [app.authenticate] }, async () => {
+  app.get("/calendar", { preHandler: [app.authenticate] }, async (request) => {
 
-    const items = await getCalendar();
+    const items = await getCalendar(request.user.id);
 
     return {
       success: true,

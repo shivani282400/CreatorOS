@@ -15,7 +15,10 @@ export const buildApp = () => {
   });
 
   app.register(cors, {
-    origin: true
+    origin: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: false
   });
 
   app.register(jwt, {
@@ -26,7 +29,7 @@ export const buildApp = () => {
     try {
       await request.jwtVerify();
     } catch (error) {
-      reply.code(401).send({ error: "Unauthorized" });
+      return reply.code(401).send({ error: "Unauthorized" });
     }
   });
 

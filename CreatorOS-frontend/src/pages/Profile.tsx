@@ -95,7 +95,8 @@ export default function Profile() {
         })
       });
 
-      const result = await res.json();
+      const raw = await res.text();
+      const result = raw ? JSON.parse(raw) : {};
 
       if (!res.ok || !result.data) {
         throw new Error(result.error || "Failed to save preferences");
@@ -114,7 +115,11 @@ export default function Profile() {
         })
       );
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Failed to save preferences");
+      if (saveError instanceof TypeError && saveError.message === "Failed to fetch") {
+        setError("Could not reach the backend. Make sure the API server is running on port 4000.");
+      } else {
+        setError(saveError instanceof Error ? saveError.message : "Failed to save preferences");
+      }
     } finally {
       setSaving(false);
     }

@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
-import { apiUrl, setStoredToken } from "../utils/api"
+import { apiFetch, setStoredToken } from "../utils/api"
 
 export default function Login() {
   const navigate = useNavigate()
@@ -31,7 +31,7 @@ export default function Login() {
     setError("")
 
     try {
-      const res = await fetch(apiUrl(isSignup ? "/auth/register" : "/auth/login"), {
+      const res = await apiFetch(isSignup ? "/auth/register" : "/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

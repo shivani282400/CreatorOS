@@ -1,10 +1,9 @@
 import { FastifyInstance } from "fastify";
-import { db } from "../plugins/db";
 import { generateAI } from "../services/ai/aiService";
 import { buildMemoryContext } from "../services/ai/contextBuilder";
 import { buildContentPrompt, buildGenerateLikePrompt } from "../services/ai/prompts";
 import { retrieveContextBundle } from "../services/memoryService";
-import { saveContent, updateContent } from "../services/contentService";
+import { getContentById, saveContent, updateContent } from "../services/contentService";
 import { getUserById } from "../services/userService";
 import type { AIContent } from "../utils/aiSchema";
 import { buildImprovePrompt } from "../utils/prompts";
@@ -101,9 +100,11 @@ export async function aiRoutes(app: FastifyInstance) {
         data: savedContent
       };
     } catch (error) {
+      app.log.error({ err: error }, "AI generation failed");
+
       return reply.status(500).send({
         success: false,
-        error: "AI response schema invalid"
+        error: error instanceof Error ? error.message : "AI generation failed"
       });
     }
   });
@@ -126,6 +127,15 @@ export async function aiRoutes(app: FastifyInstance) {
       };
     };
 
+    const existingContent = await getContentById(content.id, request.user.id);
+
+    if (!existingContent) {
+      return reply.status(404).send({
+        success: false,
+        error: "Content not found"
+      });
+    }
+
     const context = await getSafeMemoryContext(app, request.user.id, content.topic, {
       niche: undefined,
       tone: undefined,
@@ -145,16 +155,25 @@ export async function aiRoutes(app: FastifyInstance) {
         threads: improved.threads,
         score: improved.score,
         analysis: improved.analysis
-      });
+      }, request.user.id);
+
+      if (!savedContent) {
+        return reply.status(404).send({
+          success: false,
+          error: "Content not found"
+        });
+      }
 
       return {
         success: true,
         data: savedContent
       };
     } catch (error) {
+      app.log.error({ err: error }, "AI improve failed");
+
       return reply.status(500).send({
         success: false,
-        error: "AI response schema invalid"
+        error: error instanceof Error ? error.message : "AI improve failed"
       });
     }
   });
@@ -162,12 +181,7 @@ export async function aiRoutes(app: FastifyInstance) {
   app.post("/ai/generate-like", { preHandler: [app.authenticate] }, async (request, reply) => {
     const { contentId } = request.body as { contentId: number };
 
-    const baseRes = await db.query(
-      "SELECT * FROM content WHERE id = $1 LIMIT 1",
-      [contentId]
-    );
-
-    const baseContent = baseRes.rows[0];
+    const baseContent = await getContentById(contentId, request.user.id);
 
     if (!baseContent) {
       return reply.status(404).send({
@@ -197,9 +211,11 @@ export async function aiRoutes(app: FastifyInstance) {
         data: aiResponse
       };
     } catch (error) {
+      app.log.error({ err: error }, "AI generate-like failed");
+
       return reply.status(500).send({
         success: false,
-        error: "AI response schema invalid"
+        error: error instanceof Error ? error.message : "AI generate-like failed"
       });
     }
   });

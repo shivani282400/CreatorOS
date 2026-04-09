@@ -125,7 +125,7 @@ export default function Uploaded() {
 
       closePerformanceModal();
       await fetchUploaded();
-      navigate("/library");
+      navigate(`/library/${selectedItem.id}`);
     } catch (error) {
       console.error("Failed to save performance", error);
     } finally {
@@ -246,7 +246,7 @@ export default function Uploaded() {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => navigate("/library")}
+                              onClick={() => navigate(`/library/${item.id}`)}
                               className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-white/15"
                             >
                               Open in Library

@@ -86,7 +86,7 @@ export const saveContent = async (data: any, userId?: number) => {
   return savedContent;
 };
 
-export const updateContent = async (id: number, data: any) => {
+export const updateContent = async (id: number, data: any, userId?: number) => {
   let embedding: number[] | null = null;
 
   try {
@@ -107,6 +107,7 @@ export const updateContent = async (id: number, data: any) => {
          analysis = $9,
          embedding = $10::vector
      WHERE id = $1
+       ${userId ? "AND user_id = $11" : ""}
      RETURNING *`,
     [
       id,
@@ -118,29 +119,43 @@ export const updateContent = async (id: number, data: any) => {
       data.threads,
       data.score,
       data.analysis ? JSON.stringify(data.analysis) : null,
-      embedding ? toVectorLiteral(embedding) : null
+      embedding ? toVectorLiteral(embedding) : null,
+      ...(userId ? [userId] : [])
     ]
   );
 
   return result.rows[0];
 };
 
-export const deleteContent = async (id: number) => {
-
-  await db.query("DELETE FROM calendar WHERE content_id = $1", [id]);
-  await db.query("DELETE FROM content WHERE id = $1", [id]);
-};
-
-export const getContent = async () => {
+export const deleteContent = async (id: number, userId: number) => {
+  await db.query(
+    `DELETE FROM calendar
+     WHERE content_id = $1
+       AND content_id IN (
+         SELECT id FROM content WHERE id = $1 AND user_id = $2
+       )`,
+    [id, userId]
+  );
 
   const result = await db.query(
-    "SELECT * FROM content ORDER BY created_at DESC"
+    "DELETE FROM content WHERE id = $1 AND user_id = $2 RETURNING id",
+    [id, userId]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+export const getContent = async (userId: number) => {
+
+  const result = await db.query(
+    "SELECT * FROM content WHERE user_id = $1 ORDER BY created_at DESC",
+    [userId]
   );
 
   return result.rows;
 };
 
-export const searchContent = async (query: string) => {
+export const searchContent = async (query: string, userId: number) => {
   if (!query.trim()) {
     throw new Error("Query required");
   }
@@ -152,9 +167,10 @@ export const searchContent = async (query: string) => {
             embedding <-> $1::vector AS distance
      FROM content
      WHERE embedding IS NOT NULL
+       AND user_id = $2
      ORDER BY embedding <-> $1::vector
      LIMIT 5`,
-    [toVectorLiteral(queryEmbedding)]
+    [toVectorLiteral(queryEmbedding), userId]
   );
 
   return result.rows;
@@ -196,4 +212,13 @@ export const getTopPerformingContent = async (userId: number) => {
   );
 
   return result.rows;
+};
+
+export const getContentById = async (id: number, userId: number) => {
+  const result = await db.query(
+    "SELECT * FROM content WHERE id = $1 AND user_id = $2 LIMIT 1",
+    [id, userId]
+  );
+
+  return result.rows[0] ?? null;
 };

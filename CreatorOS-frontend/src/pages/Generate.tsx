@@ -196,7 +196,7 @@ export default function Generate() {
       toast.success("Draft generated")
     } catch (err) {
       console.error("Generation failed", err)
-      toast.error("Generation failed")
+      toast.error(err instanceof Error ? err.message : "Generation failed")
     } finally {
       setLoading(false)
     }

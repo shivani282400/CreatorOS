@@ -40,7 +40,7 @@ export const scheduleContent = async (
   return result.rows[0];
 };
 
-export const getCalendar = async () => {
+export const getCalendar = async (userId: number) => {
 
   const result = await db.query(
     `
@@ -48,8 +48,10 @@ export const getCalendar = async () => {
     FROM calendar
     JOIN content
     ON calendar.content_id = content.id
+    WHERE content.user_id = $1
     ORDER BY scheduled_date
-    `
+    `,
+    [userId]
   );
 
   return result.rows;
