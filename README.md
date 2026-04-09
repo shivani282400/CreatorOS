@@ -1,123 +1,203 @@
 # CreatorOS
 
-**CreatorOS** is a full-stack, AI-powered content operating system for creators, personal brands, and modern media teams.
+**AI-native content operating system for creators, personal brands, and media teams.**
 
-It brings the entire content lifecycle into one product:
-**generate**, **evaluate**, **store**, **schedule**, **measure**, and **improve**.
+CreatorOS turns content creation into a closed-loop workflow:
 
-Instead of treating AI content generation as a one-off prompt, CreatorOS is designed as a **closed-loop system** that learns from historical content, performance signals, and user preferences to produce better outputs over time.
+**Generate. Evaluate. Store. Schedule. Measure. Learn. Improve.**
+
+Instead of treating AI as a one-time prompt tool, CreatorOS is built as a system that gets better over time through memory, retrieval, performance signals, and structured iteration.
+
+---
+
+## Overview
+
+CreatorOS combines AI generation, evaluation, scheduling, semantic memory, and performance feedback into a single full-stack product.
+
+It is designed for teams and creators who want more than isolated outputs. The system supports the full content lifecycle, from first draft to post-performance learning.
+
+### Core Value
+
+- **Generate faster** with multi-provider AI
+- **Improve quality** with structured scoring and revision flows
+- **Stay organized** with a managed content library
+- **Plan distribution** through a scheduling workflow
+- **Learn from history** with vector memory and retrieval
+- **Close the loop** with performance data feeding future generation
+
+---
 
 ## ✨ What Makes CreatorOS Unique
 
-- **Closed-loop content system**
-  - CreatorOS does not stop at generation. It captures output, stores memory, tracks performance, and feeds those signals back into future creation.
-- **AI + data-driven improvement**
-  - Content is generated, scored, improved, and enriched with retrieval context from past work.
-- **Memory-aware generation**
-  - Semantic retrieval helps the system generate content that is more personalized and more consistent with the creator's history.
-- **Versioned content workflow**
-  - Library items support regenerate and improve flows, grouped variations, and structured draft management.
-- **Full lifecycle product**
-  - CreatorOS covers ideation, drafting, evaluation, planning, measurement, and learning in one stack.
+### Closed-Loop AI Workflow
+
+CreatorOS is designed as a feedback system, not a single-purpose generator.
+
+- Content is generated
+- Stored as structured data
+- Embedded for semantic retrieval
+- Scheduled into a planning workflow
+- Measured after publishing
+- Fed back into memory for better future outputs
+
+### Memory-Aware Generation
+
+The system retrieves relevant scripts, hooks, and captions from historical creator data before generating new content.
+
+- **RAG-powered context injection**
+- **Semantic retrieval with pgvector**
+- **Preference-aware generation** using niche, tone, and platform
+
+### Versioned Content Operations
+
+CreatorOS supports content as an evolving asset, not a static document.
+
+- Regenerate alternate drafts
+- Improve existing content in place
+- Group related variations
+- Compare versions in the library workflow
+
+### Full Lifecycle Product
+
+CreatorOS covers more than content writing.
+
+- Ideation
+- Drafting
+- Evaluation
+- Storage
+- Scheduling
+- Measurement
+- Learning
+
+---
 
 ## 🔥 Key Features
 
 ### 🤖 AI System
 
-- **Multi-provider generation** with **Groq**, **OpenRouter**, and **Together**
-- **Provider retry and fallback pipeline** for more reliable output generation
-- **Structured JSON responses** with:
+- **Multi-provider generation**
+  - Groq
+  - OpenRouter
+  - Together
+- **Structured JSON output**
   - `script`
   - `hooks`
   - `captions`
   - `threads`
   - `score`
   - `analysis`
-- **Strict schema validation** and response normalization
-- **LLM-as-a-judge scoring flow** for content quality evaluation
-- **Improve flow** that rewrites existing drafts using AI feedback
+- **Strict schema validation**
+- **Retry + fallback orchestration**
+- **LLM-as-a-judge scoring**
+- **AI improvement flow** for upgrading existing drafts
 
 ### 📚 Content System
 
-- **Content library** for saved drafts and AI-generated outputs
-- **Regenerate** flow for new takes on the same idea
-- **Improve** flow for revising an existing draft in place
-- **Version grouping** for related content variations
-- **Expandable variations UI** in the library
-- **Deep-linkable content detail view** from the library
-- **Favorites workflow** for saving standout drafts
-- **Generate Like This** flow powered by retrieval context from past content
+- **Saved draft library**
+- **Regenerate vs improve workflows**
+- **Version grouping system**
+- **Expandable variation views**
+- **Favorites workflow**
+- **Deep-linkable library detail state**
+- **Generate Like This** using past content context
 
 ### 🧠 RAG + Memory
 
-- **Semantic search** using **pgvector**
-- **OpenAI embeddings** for content and memory indexing
-- **Retrieval-Augmented Generation (RAG)** for context-aware generation
-- **Memory store** for scripts, hooks, and captions
-- **Personalized generation context** using:
-  - past creator outputs
-  - user niche
-  - preferred tone
-  - preferred platform
-- **Similarity-based retrieval** weighted by historical content performance
+- **OpenAI embeddings**
+- **Semantic search with pgvector**
+- **Retrieval-Augmented Generation**
+- **Memory storage** for:
+  - scripts
+  - hooks
+  - captions
+- **Performance-weighted retrieval**
+- **Context-aware personalized generation**
 
 ### 📅 Scheduling System
 
-- **Calendar-based planning** for content scheduling
-- **Schedule directly from the library**
-- **Schedule from the calendar workflow**
-- **Uploaded content view** for already scheduled or posted content
-- **Published state tracking** through the performance pipeline
+- **Calendar-based planning**
+- **Schedule from library**
+- **Schedule from calendar workflow**
+- **Uploaded content view** for scheduled/published items
+- **Published status tracking**
 
 ### 📈 Performance System
 
-- **Manual performance input** for:
+- **Manual performance input**
   - views
   - likes
   - comments
   - shares
 - **Engagement score calculation**
-- **Performance feedback loop** into the memory layer
-- **Top-performing content retrieval** for stronger future inspiration
+- **Feedback loop into memory ranking**
+- **Top-performing content retrieval**
 
 ### 👤 User System
 
 - **JWT authentication**
-- **Register / login flow**
 - **Protected API routes**
-- **Profile preferences** for:
+- **Profile preference management**
+- **Stored creator profile fields**
   - niche
   - tone
   - platform
 
-## 🧠 System Design / Flow
+---
 
-CreatorOS is built as a **closed-loop AI content engine**:
+## 🧠 System Design
 
-`Generate → Store → Embed → Search → Schedule → Publish → Measure → Learn → Improve`
+### Closed-Loop Flow
 
-### Flow Breakdown
+```text
+Generate → Store → Embed → Search → Schedule → Publish → Measure → Learn → Improve
+```
 
-1. **Generate**
-   - Multi-provider LLM generation produces structured content output.
-2. **Store**
-   - Drafts are saved to PostgreSQL with script, hooks, captions, score, and analysis.
-3. **Embed**
-   - Content and memory artifacts are converted into embeddings.
-4. **Search**
-   - pgvector enables semantic retrieval across prior scripts, hooks, and captions.
-5. **Schedule**
-   - Content moves into the calendar planning layer.
-6. **Publish**
-   - Scheduled items can be marked as published.
-7. **Measure**
-   - Performance data is added manually through the uploaded content workflow.
-8. **Learn**
-   - Engagement signals update memory scoring and influence retrieval ranking.
-9. **Improve**
-   - The system uses stored context and prior results to generate stronger future drafts.
+### How The System Works
 
-This architecture makes CreatorOS more than a generation tool. It behaves like a **learning content system** that gets more useful as more content and performance data are added.
+#### 1. Generate
+
+Multi-provider LLM generation produces structured content output.
+
+#### 2. Store
+
+Drafts are saved in PostgreSQL with:
+
+- script
+- hooks
+- captions
+- threads
+- score
+- analysis
+
+#### 3. Embed
+
+Content and memory artifacts are converted into vector embeddings.
+
+#### 4. Search
+
+pgvector enables semantic retrieval across historical creator data.
+
+#### 5. Schedule
+
+Content moves into the calendar planning layer.
+
+#### 6. Publish
+
+Scheduled entries can be marked as published.
+
+#### 7. Measure
+
+Manual performance metrics are added after posting.
+
+#### 8. Learn
+
+Performance signals update memory scores and improve future retrieval quality.
+
+#### 9. Improve
+
+Future generations become more relevant through stored memory, retrieval context, and historical engagement data.
+
+---
 
 ## 🏗️ Architecture
 
@@ -126,8 +206,8 @@ This architecture makes CreatorOS more than a generation tool. It behaves like a
 - **React**
 - **TypeScript**
 - **Tailwind CSS**
+- **Vite**
 - **react-router-dom**
-- Library, calendar, uploaded content, dashboard, onboarding, and profile flows
 
 ### Backend
 
@@ -135,7 +215,6 @@ This architecture makes CreatorOS more than a generation tool. It behaves like a
 - **TypeScript**
 - **PostgreSQL**
 - **pgvector**
-- JWT-protected REST API
 
 ### AI Layer
 
@@ -143,9 +222,8 @@ This architecture makes CreatorOS more than a generation tool. It behaves like a
 - **OpenRouter**
 - **Together**
 - **OpenAI embeddings**
-- Structured validation with retry/fallback orchestration
 
-### Core Backend Modules
+### Backend Capabilities
 
 - **AI routes**
   - generate
@@ -159,15 +237,18 @@ This architecture makes CreatorOS more than a generation tool. It behaves like a
   - uploaded content
   - top-performing content
 - **Calendar routes**
-  - scheduling
-  - calendar retrieval
+  - schedule content
+  - fetch planning data
 - **Performance routes**
   - mark published
   - add metrics
 - **Memory routes**
   - semantic memory retrieval
 - **User routes**
-  - profile read/update
+  - get profile
+  - update profile
+
+---
 
 ## 📁 Project Structure
 
@@ -193,18 +274,30 @@ CreatorOS/
 └── README.md
 ```
 
+### Main Frontend Screens
+
+- **Dashboard**
+- **Generate**
+- **Library**
+- **Calendar**
+- **Uploaded**
+- **Profile**
+- **Onboarding**
+
+---
+
 ## ⚙️ Setup Instructions
 
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone <your-repo-url>
 cd CreatorOS
 ```
 
-### 2. Set up PostgreSQL
+### 2. Configure PostgreSQL
 
-- Create a PostgreSQL database
+- Create a database
 - Enable the `vector` extension
 - Run the schema file
 
@@ -216,37 +309,39 @@ CREATE EXTENSION IF NOT EXISTS vector;
 psql "$DATABASE_URL" -f CreatorOS-backend/db/schema.sql
 ```
 
-### 3. Install backend dependencies
+### 3. Install Backend Dependencies
 
 ```bash
 cd CreatorOS-backend
 npm install
 ```
 
-### 4. Install frontend dependencies
+### 4. Install Frontend Dependencies
 
 ```bash
 cd ../CreatorOS-frontend
 npm install
 ```
 
-### 5. Run the backend
+### 5. Start the Backend
 
 ```bash
 cd ../CreatorOS-backend
 npm run dev
 ```
 
-### 6. Run the frontend
+### 6. Start the Frontend
 
 ```bash
 cd ../CreatorOS-frontend
 npm run dev
 ```
 
+---
+
 ## 🔐 Environment Variables
 
-Create a `.env` file in `CreatorOS-backend/`:
+Create a `.env` file in `CreatorOS-backend/`.
 
 ```env
 PORT=4000
@@ -259,26 +354,28 @@ TOGETHER_API_KEY=your_together_key
 OPENAI_API_KEY=your_openai_key
 ```
 
-### Variable Reference
+### Variables
 
 - **PORT**
   - Backend server port
 - **DATABASE_URL**
   - PostgreSQL connection string
 - **JWT_SECRET**
-  - Secret used to sign auth tokens
+  - Secret used for token signing
 - **GROQ_API_KEY**
-  - Groq generation provider
+  - Groq provider key
 - **OPENROUTER_API_KEY**
-  - OpenRouter generation provider
+  - OpenRouter provider key
 - **TOGETHER_API_KEY**
-  - Together generation provider
+  - Together provider key
 - **OPENAI_API_KEY**
-  - Used for embedding generation
+  - Embeddings provider key
+
+---
 
 ## 🧰 Tech Stack
 
-### Frontend
+### Frontend Stack
 
 - **React 19**
 - **TypeScript**
@@ -286,66 +383,75 @@ OPENAI_API_KEY=your_openai_key
 - **Vite**
 - **react-router-dom**
 
-### Backend
+### Backend Stack
 
 - **Fastify**
 - **TypeScript**
 - **PostgreSQL**
 - **pgvector**
 
-### AI / ML
+### AI / ML Stack
 
 - **Groq**
 - **OpenRouter**
 - **Together**
 - **OpenAI embeddings**
 
+---
+
 ## ✅ Current Status
 
 CreatorOS is currently implemented as a working full-stack application with:
 
-- **Authentication and user profile preferences**
-- **AI content generation with provider fallback**
-- **Structured scoring and improvement workflows**
-- **Content library with saved drafts and grouped variations**
-- **Memory storage with embeddings and semantic retrieval**
+- **Authentication and creator profile setup**
+- **AI generation with provider fallback**
+- **Structured content scoring**
+- **Improve and generate-like workflows**
+- **Saved draft library**
+- **Semantic memory storage and retrieval**
 - **Calendar scheduling**
-- **Uploaded content and performance input**
+- **Uploaded content tracking**
+- **Manual performance input**
 - **Feedback loop into memory ranking**
 
-### Current Product State
+### Product State
 
 - **Frontend application:** active
 - **Backend API:** active
 - **Database schema:** active
 - **Semantic memory layer:** active
-- **Closed-loop feedback foundation:** active
+- **Closed-loop architecture:** active
+
+---
 
 ## 🚀 Roadmap
 
-- **Automated publishing integrations**
-  - Push scheduled content directly to platform APIs
-- **Performance auto-sync**
-  - Import metrics automatically instead of relying on manual input
-- **Stronger recommendation engine**
-  - Suggest best next content ideas from historical performance
-- **Advanced experimentation**
-  - Compare variations and rank content strategies more deeply
-- **Team workflows**
-  - Multi-user collaboration, approval flows, and workspace support
-- **Analytics layer**
-  - Creator dashboards for retention, hook quality, and content velocity
+- **Publishing integrations**
+  - Platform-native publishing from CreatorOS
+- **Automated performance sync**
+  - Pull metrics without manual entry
+- **Deeper experimentation workflows**
+  - Better comparison and ranking of content variants
+- **Recommendation engine**
+  - Suggest next best ideas from memory and performance
+- **Collaboration features**
+  - Team workflows, approvals, and workspace support
+- **Richer analytics**
+  - Trend reporting, content velocity, and retention insights
 
-## 📌 Positioning
+---
 
-CreatorOS is not just an AI writing tool.
+## Positioning
 
-It is a **content operating system** built around the idea that the best creator products should:
+CreatorOS is not just an AI writer.
 
-- **generate faster**
-- **learn from history**
-- **improve with feedback**
-- **support planning and execution**
-- **turn content creation into a repeatable system**
+It is a **content operating system** built for creators who want a repeatable, learnable, data-informed workflow.
 
-If you are building for the future of creator software, media workflows, or AI-native operating systems, CreatorOS is the kind of architecture that matters.
+### In Practice, That Means
+
+- **Generate faster**
+- **Make better decisions**
+- **Keep content organized**
+- **Plan publishing**
+- **Learn from outcomes**
+- **Compound quality over time**
