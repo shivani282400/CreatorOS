@@ -6,12 +6,10 @@ type VersionCardProps = {
   compact?: boolean;
   isFavorite: boolean;
   isHighlighted: boolean;
-  isSelectedForCompare: boolean;
   loadingId: number | null;
   score: number;
   onOpen: (item: LibraryItem) => void;
   onToggleFavorite: (id: number) => void;
-  onToggleCompare: (item: LibraryItem) => void;
   onRegenerate: (item: LibraryItem) => void;
   onGenerateLike: (item: LibraryItem) => void;
   onImprove: (item: LibraryItem) => void;
@@ -24,12 +22,10 @@ function VersionCard({
   compact = false,
   isFavorite,
   isHighlighted,
-  isSelectedForCompare,
   loadingId,
   score,
   onOpen,
   onToggleFavorite,
-  onToggleCompare,
   onRegenerate,
   onGenerateLike,
   onImprove,
@@ -71,19 +67,6 @@ function VersionCard({
 
       <div className="mt-4 flex items-center justify-between text-xs text-white/40">
         <span>{new Date(item.created_at).toLocaleDateString()}</span>
-
-        <label
-          onClick={(event) => event.stopPropagation()}
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-white/70"
-        >
-          <input
-            type="checkbox"
-            checked={isSelectedForCompare}
-            onChange={() => onToggleCompare(item)}
-            className="h-3.5 w-3.5 rounded border-white/20 bg-transparent text-indigo-400 focus:ring-indigo-400"
-          />
-          Compare
-        </label>
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3">

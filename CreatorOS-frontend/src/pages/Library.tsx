@@ -7,7 +7,6 @@ import { authFetch } from "../utils/api";
 import { getAIScore } from "../utils/aiScore";
 import { groupContentByParent } from "../utils/groupContent";
 import ContentGroup from "../components/library/ContentGroup";
-import CompareModal from "../components/library/CompareModal";
 import type { LibraryItem } from "../components/library/types";
 
 type ExpandedState = Record<string, boolean>;
@@ -29,8 +28,6 @@ export default function Library() {
   const [selectedDate, setSelectedDate] = useState("");
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<ExpandedState>({});
-  const [selectedForCompare, setSelectedForCompare] = useState<LibraryItem[]>([]);
-  const [compareItems, setCompareItems] = useState<[LibraryItem, LibraryItem] | null>(null);
 
   const targetContentId = routeId ? Number(routeId) : null;
 
@@ -225,8 +222,6 @@ export default function Library() {
   const handleDelete = async (id: number) => {
     await authFetch(`/content/${id}`, { method: "DELETE" });
 
-    setSelectedForCompare((prev) => prev.filter((item) => item.id !== id));
-
     if (selected?.id === id) {
       setSelected(null);
     }
@@ -277,30 +272,6 @@ export default function Library() {
       ...prev,
       [groupId]: !prev[groupId]
     }));
-  };
-
-  const handleToggleCompare = (groupItems: LibraryItem[], item: LibraryItem) => {
-    setSelectedForCompare((prev) => {
-      const isSelected = prev.some((current) => current.id === item.id);
-
-      if (isSelected) {
-        return prev.filter((current) => current.id !== item.id);
-      }
-
-      const currentGroupSelection = prev.filter(
-        (current) => groupItems.some((groupItem) => groupItem.id === current.id)
-      );
-
-      if (currentGroupSelection.length >= 2) {
-        return prev;
-      }
-
-      return [...currentGroupSelection, item];
-    });
-  };
-
-  const handleOpenCompare = (items: [LibraryItem, LibraryItem]) => {
-    setCompareItems(items);
   };
 
   if (loading) {
@@ -381,24 +352,16 @@ export default function Library() {
 
             <div className="mt-8 space-y-8">
               {groupedContent.map((group) => {
-                const compareCandidates = selectedForCompare.filter((item) =>
-                  [group.main, ...group.variations].some((candidate) => candidate.id === item.id)
-                );
-
                 return (
                   <ContentGroup
                     key={group.groupId}
                     group={group}
                     expanded={Boolean(expandedGroups[group.groupId])}
-                    compareCount={compareCandidates.length}
-                    selectedForCompare={compareCandidates}
                     highlightedId={highlightedId}
                     favorites={favorites}
                     loadingId={loadingId}
                     scores={scores}
                     onToggleExpanded={() => handleToggleExpanded(group.groupId)}
-                    onToggleCompare={handleToggleCompare}
-                    onOpenCompare={handleOpenCompare}
                     onOpen={handleOpenCard}
                     onToggleFavorite={toggleFavorite}
                     onRegenerate={regenerate}
@@ -497,12 +460,6 @@ export default function Library() {
           </section>
         </div>
       </PageWrapper>
-
-      <CompareModal
-        items={compareItems}
-        scores={scores}
-        onClose={() => setCompareItems(null)}
-      />
     </MainLayout>
   );
 }
