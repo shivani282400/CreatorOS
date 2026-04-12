@@ -101,17 +101,26 @@ CreatorOS covers more than content writing.
 - **Deep-linkable library detail state**
 - **Generate Like This** using past content context
 
-### 🧠 RAG + Memory
+### 🧠 RAG + Memory (Personalization Engine)
 
-- **OpenAI embeddings**
-- **Semantic search with pgvector**
-- **Retrieval-Augmented Generation**
+- **OpenAI embeddings + pgvector**
+- **Retrieval-Augmented Generation (RAG)**
 - **Memory storage** for:
   - scripts
   - hooks
   - captions
-- **Performance-weighted retrieval**
-- **Context-aware personalized generation**
+- **Performance-aware retrieval**
+  - combines similarity + engagement score
+- **Brand + persona memory**
+  - niche, tone, platform, audience
+- **Style extraction system**
+  - hook type, tone, structure, caption length
+- **Memory summarization**
+  - compresses top-performing content into high-level insights
+- **Auto-learning memory system**
+  - updates based on content creation and performance events
+- **Content DNA (style insights)**
+  - structured representation of creator behavior
 
 ### 📅 Scheduling System
 
@@ -149,108 +158,74 @@ CreatorOS covers more than content writing.
 ### Closed-Loop Flow
 
 ```text
-Generate → Store → Embed → Search → Schedule → Publish → Measure → Learn → Improve
+Generate → Store → Embed → Retrieve → Personalize → Schedule → Publish → Measure → Learn → Summarize → Improve
 ```
 
-### How The System Works
 
-#### 1. Generate
+---
 
-Multi-provider LLM generation produces structured content output.
+### How It Works
 
-#### 2. Store
+1. **Generate**  
+   Multi-provider AI generates structured content  
 
-Drafts are saved in PostgreSQL with:
+2. **Store**  
+   Content saved in PostgreSQL  
 
-- script
-- hooks
-- captions
-- threads
-- score
-- analysis
+3. **Embed**  
+   Converted into vector embeddings  
 
-#### 3. Embed
+4. **Retrieve**  
+   Semantic search using pgvector  
 
-Content and memory artifacts are converted into vector embeddings.
+5. **Personalize**  
+   Inject memory + style into prompts  
 
-#### 4. Search
+6. **Schedule**  
+   Content moves to calendar  
 
-pgvector enables semantic retrieval across historical creator data.
+7. **Publish**  
+   Marked as published  
 
-#### 5. Schedule
+8. **Measure**  
+   Performance metrics added  
 
-Content moves into the calendar planning layer.
+9. **Learn**  
+   Memory updated with scores  
 
-#### 6. Publish
+10. **Summarize**  
+    AI generates high-level insights  
 
-Scheduled entries can be marked as published.
-
-#### 7. Measure
-
-Manual performance metrics are added after posting.
-
-#### 8. Learn
-
-Performance signals update memory scores and improve future retrieval quality.
-
-#### 9. Improve
-
-Future generations become more relevant through stored memory, retrieval context, and historical engagement data.
+11. **Improve**  
+    Future outputs become better  
 
 ---
 
 ## 🏗️ Architecture
 
 ### Frontend
-
-- **React**
-- **TypeScript**
-- **Tailwind CSS**
-- **Vite**
-- **react-router-dom**
+- React  
+- TypeScript  
+- Tailwind CSS  
+- Vite  
 
 ### Backend
-
-- **Fastify**
-- **TypeScript**
-- **PostgreSQL**
-- **pgvector**
+- Fastify  
+- TypeScript  
+- PostgreSQL  
+- pgvector  
 
 ### AI Layer
-
-- **Groq**
-- **OpenRouter**
-- **Together**
-- **OpenAI embeddings**
-
-### Backend Capabilities
-
-- **AI routes**
-  - generate
-  - improve
-  - generate-like
-- **Content routes**
-  - save
-  - list
-  - delete
-  - semantic search
-  - uploaded content
-  - top-performing content
-- **Calendar routes**
-  - schedule content
-  - fetch planning data
-- **Performance routes**
-  - mark published
-  - add metrics
-- **Memory routes**
-  - semantic memory retrieval
-- **User routes**
-  - get profile
-  - update profile
+- Groq  
+- OpenRouter  
+- Together  
+- OpenAI (embeddings)  
 
 ---
 
 ## 📁 Project Structure
+
+
 
 ```text
 CreatorOS/
@@ -455,3 +430,4 @@ It is a **content operating system** built for creators who want a repeatable, l
 - **Plan publishing**
 - **Learn from outcomes**
 - **Compound quality over time**
+
