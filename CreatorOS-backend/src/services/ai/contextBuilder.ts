@@ -8,7 +8,17 @@ type MemoryRow = {
   score?: number | null;
 };
 
+type StyleFeatures = {
+  hook_type: string;
+  caption_length: string;
+  tone: string;
+  structure: string;
+};
+
 type MemoryBundle = {
+  brand?: MemoryRow | null;
+  summary?: MemoryRow | null;
+  style?: StyleFeatures | null;
   scripts: MemoryRow[];
   hooks: MemoryRow[];
   captions: MemoryRow[];
@@ -41,6 +51,24 @@ export const buildMemoryContext = (memory: MemoryBundle, user: UserContext) => {
   const sections = [
     "Creator Profile:",
     profile,
+    "",
+    "Creator Identity:",
+    memory.brand?.text || "No stored brand memory available.",
+    "",
+    "Use this tone, style, and audience while generating content.",
+    "",
+    "Creator Summary:",
+    memory.summary?.text || "No summarized creator memory available.",
+    "",
+    "Use these insights while generating content.",
+    "",
+    "Creator Style Patterns:",
+    `- Hook Style: ${memory.style?.hook_type || "curiosity gap"}`,
+    `- Tone: ${memory.style?.tone || "educational"}`,
+    `- Structure: ${memory.style?.structure || "mixed"}`,
+    `- Caption Length: ${memory.style?.caption_length || "medium"}`,
+    "",
+    "Follow these patterns while generating content.",
     "",
     "Relevant Memory:",
     formatEntries("Scripts", memory.scripts),

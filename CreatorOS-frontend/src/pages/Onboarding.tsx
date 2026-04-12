@@ -16,6 +16,7 @@ import {
   Youtube
 } from "lucide-react"
 import OnboardingOptionCard from "../components/onboarding/OnboardingOptionCard"
+import { authFetch } from "../utils/api"
 
 const STORAGE_KEY = "creator_profile"
 
@@ -329,7 +330,7 @@ export default function Onboarding() {
     )
   }
 
-  const saveAndContinue = () => {
+  const saveAndContinue = async () => {
     if (!currentSelection) {
       return
     }
@@ -351,6 +352,24 @@ export default function Onboarding() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(userProfile))
     window.localStorage.setItem("creatorosOnboarding", JSON.stringify(userProfile))
 
+    const profilePayload = {
+      niche: nicheOptions.find((option) => option.id === niche)?.title ?? niche,
+      tone: toneOptions.find((option) => option.id === tone)?.title ?? tone,
+      platform: selectedPlatforms[0] ?? null
+    }
+
+    try {
+      await authFetch("/user/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(profilePayload)
+      })
+    } catch (error) {
+      console.warn("Could not sync onboarding preferences to profile", error)
+    }
+
     navigate("/dashboard")
   }
 
@@ -364,17 +383,17 @@ export default function Onboarding() {
     nicheOptions.find((option) => option.id === niche)?.title ?? null
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.18),transparent_32%),#0b1020] px-6 py-10 text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.18),transparent_32%),#0b1020] px-4 py-4 text-white">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <motion.div
           animate={{ x: [0, 35, 0], y: [0, -24, 0] }}
           transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute left-[10%] top-[8%] h-72 w-72 rounded-full bg-fuchsia-500/10 blur-3xl"
+          className="absolute left-[10%] top-[8%] h-56 w-56 rounded-full bg-fuchsia-500/10 blur-3xl"
         />
         <motion.div
           animate={{ x: [0, -28, 0], y: [0, 30, 0] }}
           transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-[10%] right-[10%] h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl"
+          className="absolute bottom-[10%] right-[10%] h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl"
         />
 
         {floatingMarks.map((mark) => {
@@ -391,46 +410,46 @@ export default function Onboarding() {
                 repeat: Infinity,
                 ease: "easeInOut"
               }}
-              className={`absolute flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl ${mark.className}`}
+              className={`absolute hidden h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl lg:flex ${mark.className}`}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-4 w-4" />
             </motion.div>
           )
         })}
       </div>
 
-      <div className="relative mx-auto max-w-6xl">
+      <div className="relative mx-auto flex min-h-[calc(100vh-2rem)] max-w-5xl flex-col justify-center">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-12 flex items-center justify-center gap-4"
+          className="mb-5 flex items-center justify-center gap-3"
         >
           <motion.div
             initial={{ scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.08, duration: 0.35 }}
-            className="flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-fuchsia-500 to-indigo-400 text-2xl font-semibold shadow-[0_18px_40px_rgba(99,102,241,0.3)]"
+            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-indigo-400 text-sm font-semibold shadow-[0_18px_40px_rgba(99,102,241,0.3)]"
           >
             CO
           </motion.div>
           <div>
-            <h1 className="text-4xl font-semibold text-white">CreatorOS</h1>
-            <p className="text-lg text-white/45">Personalize your content engine</p>
+            <h1 className="text-2xl font-semibold text-white">CreatorOS</h1>
+            <p className="text-xs text-white/45">Personalize your content engine</p>
           </div>
         </motion.div>
 
-        <div className="mx-auto max-w-5xl space-y-10 text-center">
+        <div className="mx-auto w-full max-w-4xl space-y-5 text-center">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.12, duration: 0.4 }}
-            className="space-y-4"
+            className="space-y-2"
           >
-            <h2 className="text-6xl font-semibold tracking-[-0.05em] text-white">
+            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white lg:text-4xl">
               Let&apos;s personalize your experience
             </h2>
-            <p className="mx-auto max-w-3xl text-xl leading-8 text-white/50">
+            <p className="mx-auto max-w-2xl text-sm leading-6 text-white/50">
               Help us understand your content style so CreatorOS can guide generation
               with more relevant ideas, voice, and platform fit.
             </p>
@@ -440,7 +459,7 @@ export default function Onboarding() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18, duration: 0.4 }}
-            className="flex flex-wrap items-center justify-center gap-4"
+            className="flex flex-wrap items-center justify-center gap-2"
           >
             {[
               { stepNumber: 1, label: "Niche" },
@@ -453,10 +472,10 @@ export default function Onboarding() {
               const isCurrent = step === item.stepNumber
 
               return (
-                <div key={item.label} className="flex items-center gap-4">
-                  <div className="flex items-center gap-3">
+                <div key={item.label} className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <div
-                      className={`flex h-14 w-14 items-center justify-center rounded-3xl text-xl font-semibold transition-all duration-200 ${
+                      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-all duration-200 ${
                         isCurrent
                           ? "border border-purple-400/40 bg-purple-500/20 text-white ring-2 ring-purple-500/30"
                           : isComplete
@@ -464,14 +483,14 @@ export default function Onboarding() {
                             : "bg-white/5 text-white/30"
                       }`}
                     >
-                      {isComplete ? <Check className="h-6 w-6" /> : item.stepNumber}
+                      {isComplete ? <Check className="h-4 w-4" /> : item.stepNumber}
                     </div>
-                    <span className={`text-lg ${isCurrent || isComplete ? "text-white" : "text-white/35"}`}>
+                    <span className={`text-xs ${isCurrent || isComplete ? "text-white" : "text-white/35"}`}>
                       {item.label}
                     </span>
                   </div>
 
-                  {index < 4 ? <div className="hidden h-px w-12 bg-white/10 lg:block" /> : null}
+                  {index < 4 ? <div className="hidden h-px w-8 bg-white/10 lg:block" /> : null}
                 </div>
               )
             })}
@@ -482,23 +501,23 @@ export default function Onboarding() {
             initial={{ opacity: 0, y: 24, scale: 0.99 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: 0.22, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="glass-panel rounded-[32px] border-white/10 bg-[#10182a]/80 p-12 text-left shadow-[0_24px_80px_rgba(0,0,0,0.28)]"
+            className="glass-panel rounded-[24px] border-white/10 bg-[#10182a]/80 p-6 text-left shadow-[0_24px_80px_rgba(0,0,0,0.28)]"
           >
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-1.5 text-sm font-medium text-purple-200">
-                <Sparkles className="h-4 w-4" />
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/20 bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-200">
+                <Sparkles className="h-3 w-3" />
                 {stepMeta[step].eyebrow}
               </div>
 
-              <h3 className="text-5xl font-semibold tracking-[-0.04em] text-white">
+              <h3 className="text-2xl font-semibold tracking-[-0.03em] text-white">
                 {stepMeta[step].title}
               </h3>
-              <p className="max-w-2xl text-lg leading-8 text-white/50">
+              <p className="max-w-2xl text-xs leading-5 text-white/50">
                 {stepMeta[step].subtitle}
               </p>
             </div>
 
-            <div className="mt-10">
+            <div className="mt-6">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={step}
@@ -508,7 +527,7 @@ export default function Onboarding() {
                   transition={{ duration: 0.28, ease: "easeOut" }}
                 >
                   {step === 1 ? (
-                    <div className="grid gap-5 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                       {nicheOptions.map((option) => (
                         <motion.div
                           key={option.id}
@@ -530,7 +549,7 @@ export default function Onboarding() {
                   ) : null}
 
                   {step === 2 ? (
-                    <div className="grid gap-5 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                       {platformOptions.map((option, index) => (
                         <motion.div
                           key={option.id}
@@ -552,7 +571,7 @@ export default function Onboarding() {
                   ) : null}
 
                   {step === 3 ? (
-                    <div className="grid gap-5 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                       {toneOptions.map((option, index) => (
                         <motion.div
                           key={option.id}
@@ -574,7 +593,7 @@ export default function Onboarding() {
                   ) : null}
 
                   {step === 4 ? (
-                    <div className="grid gap-5 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                       {goalOptions.map((option, index) => (
                         <motion.div
                           key={option.id}
@@ -596,7 +615,7 @@ export default function Onboarding() {
                   ) : null}
 
                   {step === 5 ? (
-                    <div className="grid gap-5 md:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-3">
                       {audienceOptions.map((option, index) => (
                         <motion.div
                           key={option.id}
@@ -624,7 +643,7 @@ export default function Onboarding() {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-6 rounded-2xl border border-purple-500/15 bg-purple-500/8 px-5 py-4 text-sm text-purple-100"
+                className="mt-4 rounded-xl border border-purple-500/15 bg-purple-500/8 px-4 py-3 text-xs leading-5 text-purple-100"
               >
                 You selected {selectedNicheLabel} — great for aesthetic and relatable content if you lean visual, or sharp niche expertise if you lean educational.
               </motion.div>
@@ -634,24 +653,24 @@ export default function Onboarding() {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-6 rounded-2xl border border-purple-500/15 bg-purple-500/8 px-5 py-4 text-sm text-purple-100"
+                className="mt-4 rounded-xl border border-purple-500/15 bg-purple-500/8 px-4 py-3 text-xs leading-5 text-purple-100"
               >
                 {selectedPlatforms.length} platform{selectedPlatforms.length === 1 ? "" : "s"} selected — CreatorOS will prioritize {selectedPlatforms[0]} first in your generation flow.
               </motion.div>
             ) : null}
 
-            <div className="mt-12 flex items-center justify-between border-t border-white/10 pt-8">
+            <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4">
               <button
                 type="button"
                 onClick={goBack}
-                className={`text-xl transition-colors duration-200 ${
+                className={`text-sm transition-colors duration-200 ${
                   step === 1 ? "pointer-events-none text-white/20" : "text-white/70 hover:text-white"
                 }`}
               >
                 Back
               </button>
 
-              <div className="text-lg text-white/35">{stepMeta[step].eyebrow}</div>
+              <div className="text-xs text-white/35">{stepMeta[step].eyebrow}</div>
 
               <motion.button
                 type="button"
@@ -659,7 +678,7 @@ export default function Onboarding() {
                 disabled={!currentSelection}
                 whileHover={currentSelection ? { scale: 1.01, y: -1 } : undefined}
                 whileTap={currentSelection ? { scale: 0.985 } : undefined}
-                className="rounded-2xl bg-gradient-to-r from-fuchsia-500 to-indigo-500 px-8 py-4 text-xl font-medium text-white shadow-[0_18px_36px_rgba(99,102,241,0.24)] transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
+                className="rounded-xl bg-gradient-to-r from-fuchsia-500 to-indigo-500 px-6 py-3 text-sm font-medium text-white shadow-[0_18px_36px_rgba(99,102,241,0.24)] transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
               >
                 {stepMeta[step].cta}
               </motion.button>

@@ -1,4 +1,5 @@
 import { db } from "../plugins/db";
+import { autoGenerateMemory } from "./memoryService"; // ✅ NEW IMPORT
 
 type PerformanceInput = {
   views: number;
@@ -68,6 +69,13 @@ export const addPerformance = async (
        )`,
     [engagementScore, userId, calendarId]
   );
+
+  // 🔥 STEP 4 — AUTO MEMORY TRIGGER (ADDED SAFELY)
+  try {
+    await autoGenerateMemory(userId);
+  } catch (error) {
+    console.error("Auto memory generation after performance failed:", error);
+  }
 
   return {
     ...updated,

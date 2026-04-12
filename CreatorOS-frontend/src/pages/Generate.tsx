@@ -18,6 +18,51 @@ import { authFetch } from "../utils/api"
 
 const PROFILE_STORAGE_KEY = "creator_profile"
 
+const nicheLabels: Record<string, string> = {
+  ai: "AI",
+  technology: "Technology",
+  business: "Business",
+  marketing: "Marketing",
+  fitness: "Fitness",
+  gaming: "Gaming",
+  travel: "Travel",
+  fashion_lifestyle: "Fashion & Lifestyle"
+}
+
+const toneLabels: Record<string, string> = {
+  bold: "Bold",
+  funny: "Funny",
+  aesthetic: "Aesthetic",
+  educational: "Educational",
+  luxury: "Luxury",
+  relatable: "Relatable"
+}
+
+const goalLabels: Record<string, string> = {
+  grow_audience: "Grow Audience",
+  build_brand: "Build Brand",
+  sell_product: "Sell Product",
+  increase_engagement: "Increase Engagement"
+}
+
+const audienceLabels: Record<string, string> = {
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced"
+}
+
+const normalizePreference = (
+  value: string | null | undefined,
+  labels: Record<string, string>,
+  fallback = ""
+) => {
+  if (!value) {
+    return fallback
+  }
+
+  return labels[value] ?? value
+}
+
 const getOnboardingPreferences = () => {
   if (typeof window === "undefined") {
     return null
@@ -36,6 +81,9 @@ const getOnboardingPreferences = () => {
       niche?: string
       tone?: string
       platform?: string
+      platforms?: string[]
+      goal?: string
+      audience?: string
     }
   } catch {
     return null
@@ -54,8 +102,19 @@ type GeneratedContent = {
   }
 }
 
-const platformOptions = ["YouTube", "Instagram", "TikTok", "X", "LinkedIn"]
-const toneOptions = ["Educational", "Storytelling", "Authority", "Entertaining"]
+const platformOptions = ["YouTube", "Instagram", "TikTok", "X", "LinkedIn", "Threads"]
+const toneOptions = [
+  "Educational",
+  "Storytelling",
+  "Authority",
+  "Entertaining",
+  "Bold",
+  "Funny",
+  "Aesthetic",
+  "Luxury",
+  "Relatable",
+  "Informative"
+]
 const goalOptions = ["Grow Audience", "Build Brand", "Sell Product", "Increase Engagement"]
 const contentTypes = ["Script", "Hook", "Caption", "Thread", "Carousel"]
 
@@ -131,13 +190,20 @@ function ResultBlock({
 
 export default function Generate() {
   const onboardingPreferences = getOnboardingPreferences()
+  const initialPlatform =
+    onboardingPreferences?.platform ?? onboardingPreferences?.platforms?.[0] ?? "YouTube"
+  const initialTone = normalizePreference(onboardingPreferences?.tone, toneLabels, "Educational")
+  const initialGoal = normalizePreference(onboardingPreferences?.goal, goalLabels, "Grow Audience")
+  const initialNiche = normalizePreference(onboardingPreferences?.niche, nicheLabels)
+  const initialAudience = normalizePreference(onboardingPreferences?.audience, audienceLabels)
 
-  const [platform, setPlatform] = useState(onboardingPreferences?.platform || "YouTube")
-  const [tone, setTone] = useState(onboardingPreferences?.tone || "Educational")
-  const [goal, setGoal] = useState("Grow Audience")
+  const [platform, setPlatform] = useState(initialPlatform)
+  const [tone, setTone] = useState(initialTone)
+  const [goal, setGoal] = useState(initialGoal)
   const [type, setType] = useState("Script")
   const [useBrandVoice, setUseBrandVoice] = useState(true)
-  const [niche] = useState(onboardingPreferences?.niche || "")
+  const [niche] = useState(initialNiche)
+  const [audience] = useState(initialAudience)
 
   const [topic, setTopic] = useState("")
   const [script, setScript] = useState("")
@@ -172,6 +238,9 @@ export default function Generate() {
           platform: platform || onboardingPreferences?.platform || "YouTube",
           niche: niche || onboardingPreferences?.niche || "general",
           tone: tone || onboardingPreferences?.tone || "educational",
+          goal,
+          audience,
+          contentType: type,
           save: false
         })
       })
@@ -290,7 +359,17 @@ export default function Generate() {
                   </span>
                   {niche ? (
                     <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/55">
-                      Profile: {niche.replaceAll("_", " ")}
+                      Niche: {niche}
+                    </span>
+                  ) : null}
+                  {tone ? (
+                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/55">
+                      Tone: {tone}
+                    </span>
+                  ) : null}
+                  {audience ? (
+                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/55">
+                      Audience: {audience}
                     </span>
                   ) : null}
                 </div>

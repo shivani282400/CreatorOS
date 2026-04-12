@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../plugins/db";
-import { storeMemory } from "./memoryService";
+import { extractStyleFeatures, storeMemory, autoGenerateMemory } from "./memoryService";
 import { generateEmbedding } from "../utils/embedding";
 
 const toVectorLiteral = (embedding: number[]) => `[${embedding.join(",")}]`;
@@ -36,6 +36,8 @@ export const saveContent = async (data: any, userId?: number) => {
 
   if (userId) {
     try {
+      const style = extractStyleFeatures(savedContent);
+
       await storeMemory({
         userId,
         contentId: savedContent.id,
@@ -45,7 +47,8 @@ export const saveContent = async (data: any, userId?: number) => {
           topic: savedContent.topic,
           platform: savedContent.platform
         },
-        score: savedContent.score
+        score: savedContent.score,
+        style
       });
 
       await Promise.all([
@@ -60,7 +63,8 @@ export const saveContent = async (data: any, userId?: number) => {
               platform: savedContent.platform,
               index
             },
-            score: savedContent.score
+            score: savedContent.score,
+            style
           })
         ),
         ...(savedContent.captions ?? []).map((caption: string, index: number) =>
@@ -74,12 +78,21 @@ export const saveContent = async (data: any, userId?: number) => {
               platform: savedContent.platform,
               index
             },
-            score: savedContent.score
+            score: savedContent.score,
+            style
           })
         )
       ]);
     } catch (error) {
       console.error("Memory storage failed:", error);
+    }
+  }
+
+  if (userId) {
+    try {
+      await autoGenerateMemory(userId);
+    } catch (error) {
+      console.error("Auto memory generation failed:", error);
     }
   }
 

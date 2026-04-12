@@ -37,11 +37,23 @@ const getSafeMemoryContext = async (
 
 export async function aiRoutes(app: FastifyInstance) {
   app.post("/ai/generate", { preHandler: [app.authenticate] }, async (request, reply) => {
-    const { topic, platform, niche, tone, save = true } = request.body as {
+    const {
+      topic,
+      platform,
+      niche,
+      tone,
+      goal,
+      audience,
+      contentType,
+      save = true
+    } = request.body as {
       topic: string;
       platform?: string;
       niche?: string;
       tone?: string;
+      goal?: string;
+      audience?: string;
+      contentType?: string;
       save?: boolean;
     };
 
@@ -58,7 +70,7 @@ export async function aiRoutes(app: FastifyInstance) {
     const resolvedNiche = niche || userProfile.niche || "general";
     const resolvedTone = tone || userProfile.tone || "educational";
 
-    const context = await getSafeMemoryContext(app, request.user.id, topic, {
+    const context = await getSafeMemoryContext(app, request.user.id, `${topic} ${goal ?? ""} ${audience ?? ""}`, {
       niche: resolvedNiche,
       tone: resolvedTone,
       platform: resolvedPlatform
@@ -68,7 +80,12 @@ export async function aiRoutes(app: FastifyInstance) {
       resolvedPlatform,
       resolvedNiche,
       resolvedTone,
-      context
+      context,
+      {
+        goal,
+        audience,
+        contentType
+      }
     );
 
     try {

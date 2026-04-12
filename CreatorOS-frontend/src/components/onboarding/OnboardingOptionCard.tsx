@@ -25,19 +25,19 @@ export default function OnboardingOptionCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 text-left backdrop-blur-lg transition-all duration-200 hover:scale-[1.02] ${
+      className={`flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-left backdrop-blur-lg transition-all duration-200 hover:scale-[1.01] ${
         selected ? "border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/30" : ""
       }`}
     >
       <div
-        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500/25 to-indigo-500/25 text-white ${badgeClassName ?? ""}`}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500/25 to-indigo-500/25 text-white ${badgeClassName ?? ""}`}
       >
-        {Icon ? <Icon className="h-6 w-6" /> : badge ? <span className="text-xl font-semibold">{badge}</span> : <span className="text-2xl">{emoji}</span>}
+        {Icon ? <Icon className="h-4 w-4" /> : badge ? <span className="text-sm font-semibold">{badge}</span> : <span className="text-lg">{emoji}</span>}
       </div>
 
-      <div className="space-y-1">
-        <p className="text-xl font-semibold text-white">{title}</p>
-        <p className="text-sm leading-6 text-white/50">{description}</p>
+      <div className="space-y-0.5">
+        <p className="text-sm font-semibold text-white">{title}</p>
+        <p className="text-xs leading-4 text-white/50">{description}</p>
       </div>
     </button>
   )

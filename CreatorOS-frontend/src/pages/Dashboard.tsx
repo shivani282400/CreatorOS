@@ -10,7 +10,10 @@ import {
 import { useNavigate } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
 import PageWrapper from "../components/PageWrapper"
+import MemorySummaryPanel from "../components/MemorySummaryPanel"
 import { authFetch } from "../utils/api"
+import ContentDNA from "../components/ContentDNA"
+
 
 type ContentItem = {
   id: number
@@ -30,6 +33,18 @@ type CalendarItem = {
   scheduled_date: string
   topic: string
   platform: string
+}
+
+type StyleInsights = {
+  tone?: string
+  hook_type?: string
+  structure?: string
+  caption_length?: string
+}
+
+type MemorySummaryResponse = {
+  summary?: string
+  styleInsights?: StyleInsights
 }
 
 const quickActions = [
@@ -112,6 +127,9 @@ export default function Dashboard() {
   const [content, setContent] = useState<ContentItem[]>([])
   const [calendar, setCalendar] = useState<CalendarItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [summary, setSummary] = useState<string | null>(null)
+  const [styleInsights, setStyleInsights] = useState<StyleInsights | null>(null)
+  const [memoryLoading, setMemoryLoading] = useState(true)
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -136,6 +154,24 @@ export default function Dashboard() {
     }
 
     fetchDashboardData()
+  }, [])
+
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        const res = await authFetch("/memory/summary")
+        const data = (await res.json()) as MemorySummaryResponse
+
+        setSummary(data.summary ?? null)
+        setStyleInsights(data.styleInsights ?? null)
+      } catch (err) {
+        console.error("Failed to fetch summary", err)
+      } finally {
+        setMemoryLoading(false)
+      }
+    }
+
+    fetchSummary()
   }, [])
 
   const now = new Date()
@@ -210,6 +246,33 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
+          </section>
+
+          <section className="transition-all duration-500 ease-in">
+            <p className="mb-3 text-xs uppercase tracking-[0.24em] text-white/50">
+              ✨ AI Insight
+            </p>
+
+            {memoryLoading ? (
+  <div className="rounded-xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-lg">
+    <p className="animate-pulse text-sm text-white/50">Loading AI memory...</p>
+  </div>
+) : summary ? (
+  <>
+    <MemorySummaryPanel
+      summary={summary}
+      styleInsights={styleInsights ?? undefined}
+    />
+
+    {styleInsights && (
+      <ContentDNA styleInsights={styleInsights} />
+    )}
+  </>
+) : (
+  <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm text-white/60 backdrop-blur-lg">
+    No memory insights yet. Generate more content to unlock AI insights.
+  </div>
+)}
           </section>
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

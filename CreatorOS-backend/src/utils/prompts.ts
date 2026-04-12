@@ -3,7 +3,12 @@ export const buildContentPrompt = (
   platform: string,
   niche = "general",
   tone = "educational",
-  context = ""
+  context = "",
+  options: {
+    goal?: string;
+    audience?: string;
+    contentType?: string;
+  } = {}
 ) => {
   return `
 You are an expert content creator and content evaluator.
@@ -19,6 +24,9 @@ Creator Profile:
 - Niche: ${niche || "general"}
 - Tone: ${tone || "educational"}
 - Platform: ${platform}
+- Content Type: ${options.contentType || "Script"}
+- Goal: ${options.goal || "Grow Audience"}
+- Audience Level: ${options.audience || "General"}
 
 Retrieved memory context:
 ${context || "No relevant memory available."}
@@ -46,6 +54,7 @@ Content requirements:
 - Script must be engaging, clear, and storytelling-based.
 - Adapt style to the niche.
 - Match the requested tone strictly.
+- Optimize for the stated content type, goal, and audience level.
 - Make content highly engaging and platform-aware.
 - Examples:
   - Fashion -> aesthetic, trendy, relatable

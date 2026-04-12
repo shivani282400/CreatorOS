@@ -1,4 +1,5 @@
 import { db } from "../plugins/db";
+import { storeBrandMemory } from "./memoryService";
 
 export type UserProfile = {
   id: number
@@ -18,7 +19,15 @@ export const createUser = async (email: string, password: string) => {
     [email, password]
   );
 
-  return result.rows[0];
+  const user = result.rows[0];
+
+  try {
+    await storeBrandMemory(user);
+  } catch (error) {
+    console.error("Brand memory storage failed:", error);
+  }
+
+  return user;
 };
 
 export const findUserByEmail = async (email: string): Promise<UserProfile | null> => {
@@ -27,7 +36,17 @@ export const findUserByEmail = async (email: string): Promise<UserProfile | null
     [email]
   );
 
-  return result.rows[0] ?? null;
+  const updatedUser = result.rows[0] ?? null;
+
+  if (updatedUser) {
+    try {
+      await storeBrandMemory(updatedUser);
+    } catch (error) {
+      console.error("Brand memory storage failed:", error);
+    }
+  }
+
+  return updatedUser;
 };
 
 export const getUserById = async (id: number): Promise<UserProfile | null> => {
