@@ -1,10 +1,10 @@
 import { Pool } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL ?? "";
-const useSsl =
-  Boolean(databaseUrl) &&
-  !databaseUrl.includes("localhost") &&
-  !databaseUrl.includes("127.0.0.1");
+
+// 🔥 FIX: Use environment instead of string matching
+const isProduction = process.env.NODE_ENV === "production";
+const useSsl = isProduction;
 
 export const db = new Pool({
   connectionString: databaseUrl || undefined,
@@ -12,7 +12,7 @@ export const db = new Pool({
     ? {
         rejectUnauthorized: false
       }
-    : undefined
+    : false
 });
 
 db.on("error", (err) => {
