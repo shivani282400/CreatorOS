@@ -61,6 +61,10 @@ export const buildApp = () => {
   app.register(memoryRoutes);
   app.register(performanceRoutes);
 
+  app.get("/", async () => {
+    return { name: "CreatorOS API", status: "running", version: "1.0.0" };
+  });
+
   app.get("/health", async () => {
     return { status: "ok" };
   });
