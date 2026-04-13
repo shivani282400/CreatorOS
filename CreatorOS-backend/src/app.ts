@@ -65,6 +65,17 @@ export const buildApp = () => {
     return { status: "ok" };
   });
 
+  app.get("/test-db", async (request, reply) => {
+    try {
+      const { db } = require("./plugins/db");
+      const result = await db.query("SELECT NOW()");
+      return { status: "ok", time: result.rows[0].now, message: "Database connection successful!" };
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(500).send({ error: "Database connection failed", details: error.message });
+    }
+  });
+
   app.setErrorHandler((error, request, reply) => {
     app.log.error(error);
     reply.status(500).send({ error: "Internal Server Error" });
