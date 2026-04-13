@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import {
   ChevronDown,
   Sparkles,
@@ -9,7 +9,8 @@ import {
   PenSquare,
   MessageSquareText,
   CheckCircle2,
-  Save
+  Save,
+  Upload
 } from "lucide-react"
 import { toast } from "sonner"
 import MainLayout from "../layouts/MainLayout"
@@ -215,7 +216,10 @@ export default function Generate() {
   const [analysisImprovements, setAnalysisImprovements] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploadingBrand, setUploadingBrand] = useState(false)
+  const [brandUploadStatus, setBrandUploadStatus] = useState("")
   const [isSaved, setIsSaved] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const hasOutput = Boolean(script || hooks.length || captions.length || threads.length)
 
@@ -315,6 +319,51 @@ export default function Generate() {
       toast.error("Save failed")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const uploadBrandBrief = async (file: File) => {
+    if (!file) {
+      return
+    }
+
+    const extension = file.name.toLowerCase()
+    const isSupported = extension.endsWith(".pdf") || extension.endsWith(".docx")
+
+    if (!isSupported) {
+      toast.error("Upload only PDF or DOCX files")
+      return
+    }
+
+    setUploadingBrand(true)
+    setBrandUploadStatus("")
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const res = await authFetch("/memory/upload-brand", {
+        method: "POST",
+        body: formData
+      })
+
+      const result = await res.json()
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Brand upload failed")
+      }
+
+      setBrandUploadStatus("Brand brief uploaded successfully")
+      toast.success("Brand brief uploaded successfully")
+    } catch (error) {
+      console.error("Brand upload failed", error)
+      setBrandUploadStatus("")
+      toast.error(error instanceof Error ? error.message : "Brand upload failed")
+    } finally {
+      setUploadingBrand(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
     }
   }
 
@@ -480,6 +529,49 @@ export default function Generate() {
                         }`}
                       />
                     </button>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-white/10 bg-[#0c1220] p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-medium text-white">Brand Brief Upload</h3>
+                      <p className="text-sm text-white/45">
+                        Upload a PDF or DOCX brief to personalize generation with brand voice.
+                      </p>
+                      <p className="mt-1 text-xs text-indigo-200/75">
+                        Using brand voice + your content DNA
+                      </p>
+                      {brandUploadStatus ? (
+                        <p className="mt-2 text-xs text-emerald-300">{brandUploadStatus}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0]
+
+                          if (file) {
+                            uploadBrandBrief(file)
+                          }
+                        }}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingBrand}
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-white transition-all duration-200 hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {uploadingBrand ? "Uploading..." : "Upload Brief"}
+                      </button>
+                    </div>
                   </div>
                 </div>
 

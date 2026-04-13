@@ -28,8 +28,12 @@ Creator Profile:
 - Goal: ${options.goal || "Grow Audience"}
 - Audience Level: ${options.audience || "General"}
 
-Retrieved memory context:
-${context || "No relevant memory available."}
+Personalization context:
+Write content matching this brand:
+${context || "No brand brief or memory available."}
+
+Follow style and identity strictly from the context above.
+Use past successful patterns from the same context.
 
 Your responsibilities:
 1. Generate high-performing social content inspired by creators like MrBeast and Alex Hormozi.

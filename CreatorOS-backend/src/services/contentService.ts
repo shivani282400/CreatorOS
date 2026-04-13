@@ -15,11 +15,12 @@ export const saveContent = async (data: any, userId?: number) => {
   }
 
   const result = await db.query(
-    `INSERT INTO content (user_id, topic, platform, script, hooks, captions, threads, score, analysis, embedding)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::vector)
+    `INSERT INTO content (user_id, parent_id, topic, platform, script, hooks, captions, threads, score, analysis, embedding)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::vector)
      RETURNING *`,
     [
       userId ?? null,
+      data.parent_id ?? null,
       data.topic,
       data.platform,
       data.script,
@@ -177,11 +178,11 @@ export const searchContent = async (query: string, userId: number) => {
 
   const result = await db.query(
     `SELECT *,
-            embedding <-> $1::vector AS distance
+            embedding <=> $1::vector AS distance
      FROM content
      WHERE embedding IS NOT NULL
        AND user_id = $2
-     ORDER BY embedding <-> $1::vector
+     ORDER BY embedding <=> $1::vector
      LIMIT 5`,
     [toVectorLiteral(queryEmbedding), userId]
   );

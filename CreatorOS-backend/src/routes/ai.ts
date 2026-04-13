@@ -222,10 +222,24 @@ export async function aiRoutes(app: FastifyInstance) {
 
     try {
       const aiResponse: AIContent = await generateAI(prompt);
+      const savedVariation = await saveContent(
+        {
+          parent_id: baseContent.parent_id ?? baseContent.id,
+          topic: baseContent.topic,
+          platform: baseContent.platform,
+          script: aiResponse.script,
+          hooks: aiResponse.hooks,
+          captions: aiResponse.captions,
+          threads: aiResponse.threads,
+          score: aiResponse.score,
+          analysis: aiResponse.analysis
+        },
+        request.user.id
+      );
 
       return {
         success: true,
-        data: aiResponse
+        data: savedVariation
       };
     } catch (error) {
       app.log.error({ err: error }, "AI generate-like failed");

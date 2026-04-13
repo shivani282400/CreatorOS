@@ -169,25 +169,17 @@ export default function Library() {
       const result = await res.json();
 
       if (!result.success) {
-        throw new Error("Generate like this failed");
+        throw new Error(result.error || "Generate like this failed");
       }
+      await fetchContent();
 
-      setSelected({
-        id: item.id,
-        parent_id: item.parent_id ?? item.id,
-        topic: `${item.topic} — Variation`,
-        platform: item.platform,
-        script: result.data.script,
-        hooks: result.data.hooks,
-        captions: result.data.captions,
-        threads: result.data.threads,
-        score: result.data.score,
-        analysis: result.data.analysis,
-        created_at: new Date().toISOString()
-      });
+      const newId = result.data?.id as number | undefined;
+      if (newId) {
+        navigate(`/library/${newId}`, { replace: true });
+      }
     } catch (error) {
       console.error(error);
-      alert("Could not generate a similar variation");
+      alert(error instanceof Error ? error.message : "Could not generate a similar variation");
     } finally {
       setLoadingId(null);
     }

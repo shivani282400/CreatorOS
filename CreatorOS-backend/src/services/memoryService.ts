@@ -251,6 +251,11 @@ export const generateMemorySummary = async (userId: number) => {
     return null;
   }
 
+  console.info("[memory] generating summary", {
+    userId,
+    sourceCount: contentResult.rows.length
+  });
+
   const contentList = contentResult.rows
     .map((item, index) => {
       return `
@@ -334,6 +339,11 @@ Rules:
   );
 
   // ✅ STEP 5 — RETURN BOTH
+  console.info("[memory] summary generated", {
+    userId,
+    averageScore
+  });
+
   return {
     ...result.rows[0],
     style
@@ -360,6 +370,7 @@ export const retrieveMemory = async ({
   type,
   limit = 5
 }: RetrieveMemoryInput) => {
+  const safeLimit = Math.min(Math.max(limit, 5), 10);
   const queryEmbedding = await generateEmbedding(query);
 
   const vectorLiteral = toVectorLiteral(queryEmbedding);
@@ -371,13 +382,20 @@ export const retrieveMemory = async ({
     WHERE user_id = $1
       AND embedding IS NOT NULL
       ${type ? "AND type = $2" : ""}
-    ORDER BY ((embedding <-> $${type ? 3 : 2}::vector) * 0.7) - (COALESCE(score, 0) * 0.3)
-    LIMIT ${limit}
+    ORDER BY (embedding <=> $${type ? 3 : 2}::vector) - (COALESCE(score, 0) * 0.01)
+    LIMIT ${safeLimit}
     `,
     type
       ? [userId, type, vectorLiteral]
       : [userId, vectorLiteral]
   );
+
+  console.info("[memory] retrieved", {
+    userId,
+    type: type ?? "all",
+    queryLength: query.length,
+    count: result.rows.length
+  });
 
   return result.rows;
 };

@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import { aiRoutes } from "./routes/ai";
 import { contentRoutes } from "./routes/content";
 import { calendarRoutes } from "./routes/calendar";
@@ -21,11 +22,17 @@ export const buildApp = () => {
     credentials: false
   });
 
+  app.register(multipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024
+    }
+  });
+
   app.register(jwt, {
     secret: process.env.JWT_SECRET || "supersecret"
   });
 
-  app.decorate("authenticate", async function authenticate(request, reply) {
+  app.decorate("authenticate", async function authenticate(request: any, reply: any) {
     try {
       await request.jwtVerify();
     } catch (error) {
