@@ -15,6 +15,11 @@ export const db = new Pool({
     : undefined
 });
 
+db.on("error", (err) => {
+  console.error("Unexpected error on idle pg client", err);
+  process.exit(-1);
+});
+
 const schemaSql = `
 CREATE EXTENSION IF NOT EXISTS vector;
 

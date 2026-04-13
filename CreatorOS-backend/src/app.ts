@@ -10,6 +10,19 @@ import jwt from "@fastify/jwt";
 import { authRoutes } from "./routes/auth";
 import { userRoutes } from "./routes/user";
 
+declare module "fastify" {
+  interface FastifyInstance {
+    authenticate: any;
+  }
+}
+
+declare module "@fastify/jwt" {
+  interface FastifyJWT {
+    payload: { id: number; email?: string };
+    user: { id: number; email?: string };
+  }
+}
+
 export const buildApp = () => {
   const app = Fastify({
     logger: true
@@ -50,6 +63,11 @@ export const buildApp = () => {
 
   app.get("/health", async () => {
     return { status: "ok" };
+  });
+
+  app.setErrorHandler((error, request, reply) => {
+    app.log.error(error);
+    reply.status(500).send({ error: "Internal Server Error" });
   });
 
   return app;
