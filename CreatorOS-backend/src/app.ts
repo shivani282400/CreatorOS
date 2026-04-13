@@ -25,7 +25,9 @@ declare module "@fastify/jwt" {
 
 export const buildApp = () => {
   const app = Fastify({
-    logger: true
+    logger: true,
+    ignoreTrailingSlash: true,
+    ignoreDuplicateSlashes: true
   });
 
   app.register(cors, {
