@@ -82,7 +82,7 @@ export const buildApp = () => {
     }
   });
 
-  app.setErrorHandler((error, request, reply) => {
+  app.setErrorHandler((error: any, request, reply) => {
     app.log.error(error);
     reply.status(error.statusCode || 500).send({ 
       error: "Internal Server Error", 

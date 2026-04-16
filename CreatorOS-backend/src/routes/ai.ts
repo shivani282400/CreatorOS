@@ -183,13 +183,13 @@ export async function aiRoutes(app: FastifyInstance) {
       });
     }
 
-    const context = await getSafeMemoryContext(app, request.user.id, content.topic, {
+    const contextData = await getSafeMemoryContext(app, request.user.id, content.topic, {
       niche: undefined,
       tone: undefined,
       platform: content.platform
     });
 
-    const prompt = buildImprovePrompt(content, context);
+    const prompt = buildImprovePrompt(content, contextData.context);
 
     try {
       const improved: AIContent = await generateAI(prompt);
@@ -237,7 +237,7 @@ export async function aiRoutes(app: FastifyInstance) {
       });
     }
 
-    const context = await getSafeMemoryContext(
+    const contextData = await getSafeMemoryContext(
       app,
       request.user.id,
       baseContent.script || baseContent.topic,
@@ -248,7 +248,7 @@ export async function aiRoutes(app: FastifyInstance) {
       }
     );
 
-    const prompt = buildGenerateLikePrompt(baseContent, context);
+    const prompt = buildGenerateLikePrompt(baseContent, contextData.context);
 
     try {
       const aiResponse: AIContent = await generateAI(prompt);
