@@ -1,6 +1,11 @@
 import "dotenv/config";
+import dns from "node:dns";
 import { buildApp } from "./app";
 import { initDatabase } from "./plugins/db";
+
+// 🔥 FIX: Render/Infra IPv6 connectivity issues
+// Force DNS to prefer IPv4 when resolving hostnames like Supabase/Neon
+dns.setDefaultResultOrder("ipv4first");
 
 const start = async () => {
   const app = buildApp();
