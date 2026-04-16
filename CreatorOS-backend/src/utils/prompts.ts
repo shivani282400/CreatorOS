@@ -2,7 +2,7 @@ export const buildContentPrompt = (
   topic: string,
   platform: string,
   niche = "general",
-  tone = "educational",
+  nicheTone = "educational",
   context = "",
   options: {
     goal?: string;
@@ -11,63 +11,40 @@ export const buildContentPrompt = (
   } = {}
 ) => {
   return `
-You are an expert content creator and content evaluator.
+You are an expert content creator and high-converting brand strategist.
 
 You MUST return ONLY valid JSON.
 Do NOT include explanations, markdown, or text outside JSON.
 
-Generate ${platform} content for:
+TASK:
+Generate high-performing ${platform} content for the topic: "${topic}".
 
-Topic: "${topic}"
+STRATEGIC CONTEXT (CRITICAL):
+This creator has a unique "Content DNA". You MUST prioritize the brand identity, voice, and past successful patterns provided in the context below. 
 
-Creator Profile:
+PERSONALIZATION CONTEXT:
+${context || "No specific brand brief or historical memory available yet. Use industry best practices for the niche."}
+
+CREATOR PROFILE:
 - Niche: ${niche || "general"}
-- Tone: ${tone || "educational"}
-- Platform: ${platform}
-- Content Type: ${options.contentType || "Script"}
+- Default Tone: ${nicheTone || "educational"}
 - Goal: ${options.goal || "Grow Audience"}
 - Audience Level: ${options.audience || "General"}
+- Target Format: ${options.contentType || "Script"}
 
-Personalization context:
-Write content matching this brand:
-${context || "No brand brief or memory available."}
-
-Follow style and identity strictly from the context above.
-Use past successful patterns from the same context.
-
-Your responsibilities:
-1. Generate high-performing social content inspired by creators like MrBeast and Alex Hormozi.
-2. Evaluate your own output using the scoring rubric below.
+INSTRUCTIONS:
+1. VOICE MATCH: The generated script, hooks, and captions must feel like they were written by the creator described in the "Personalization Context".
+2. PATTERN RECOGNITION: If the context includes specific hook patterns or structural preferences, replicate that level of intensity and style.
+3. SCORING: Evaluate your own output honestly using the rubric below. Don't be afraid to give lower scores if the content doesn't perfectly hit the brand's potential.
 
 Scoring rubric:
-- Hook Strength (0-30)
-  Evaluate curiosity, boldness, and relatability.
-- Emotional Intensity (0-20)
-  Evaluate emotional triggers, storytelling, and relatability.
-- Engagement Potential (0-25)
-  Evaluate the number and quality of hooks and captions.
-- Content Structure (0-15)
-  Evaluate script clarity, readability, and flow.
-- Platform Fit (0-10)
-  Evaluate optimization for the target platform.
+- Hook Strength (0-30): Does it grab attention within 2 seconds? Is it curious or bold?
+- Emotional Intensity (0-20): Does it trigger a specific emotion or storytelling vibe?
+- Engagement Potential (0-25): How likely are people to save, share, or comment?
+- Content Structure (0-15): Is the flow logical? Is the script clear and readable?
+- Platform Fit (0-10): Is it optimized for ${platform}'s specific format limitations?
 
-Total score must be between 0 and 100.
-Do not always give a high score. Score honestly based on quality.
-
-Content requirements:
-- Script must be engaging, clear, and storytelling-based.
-- Adapt style to the niche.
-- Match the requested tone strictly.
-- Optimize for the stated content type, goal, and audience level.
-- Make content highly engaging and platform-aware.
-- Examples:
-  - Fashion -> aesthetic, trendy, relatable
-  - Funny -> humorous, witty, light
-  - Educational -> clear, informative
-- Hooks must be short, punchy, and curiosity-driven.
-- Provide exactly 5 hooks.
-- Provide exactly 3 captions.
-- Provide exactly 2 threads.
+Total score (0-100).
 
 Return ONLY this JSON shape:
 {
@@ -82,22 +59,16 @@ Return ONLY this JSON shape:
     "engagement": 0,
     "structure": 0,
     "platform_fit": 0,
-    "summary": "string",
-    "improvements": ["string"]
+    "summary": "short explanation of how this matches the brand/niche",
+    "improvements": ["one actionable fix"]
   }
 }
 
 Rules:
-- score must reflect the rubric and stay between 0 and 100
-- analysis scores must align logically with the total score
-- improvements must contain at least 1 actionable improvement
-- hooks, captions, threads, and improvements must be JSON arrays of strings
-- no markdown
-- no code fences
-- no explanation
-- no trailing text
-
-If your response contains anything outside JSON, it is invalid.
+- score must be 0-100
+- analysis scores must align
+- exactly 5 hooks, 3 captions, 2 threads
+- strictly no markdown, no code fences, no explanation
 `;
 };
 

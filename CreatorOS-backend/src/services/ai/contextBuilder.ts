@@ -49,27 +49,30 @@ export const buildMemoryContext = (memory: MemoryBundle, user: UserContext) => {
   ].join("\n");
 
   const sections = [
-    "Creator Profile:",
+    "Creator Identity & DNA:",
     profile,
     "",
-    "Brand Guidelines:",
-    memory.brand?.text || "No stored brand brief uploaded yet.",
+    "Library DNA Style Insights (PRIMARY SOURCE OF TRUTH):",
+    `The following patterns are extracted from this creator's most successful previous content. REPLICATE THESE EXACT PATTERNS:`,
+    `- Tone: ${memory.style?.tone || "educational"}`,
+    `- Hook Pattern: ${memory.style?.hook_type || "curiosity gap"}`,
+    `- Structure: ${memory.style?.structure || "mixed"}`,
+    `- Caption Length: ${memory.style?.caption_length || "medium"}`,
     "",
-    "Content DNA Style Insights:",
-    `Tone: ${memory.style?.tone || "educational"}`,
-    `Hook: ${memory.style?.hook_type || "curiosity gap"}`,
-    `Structure: ${memory.style?.structure || "mixed"}`,
-    `Caption Length: ${memory.style?.caption_length || "medium"}`,
+    "Brand Guidelines (Optional Context):",
+    memory.brand?.text || "No manual brand brief provided. Rely entirely on Library DNA above.",
     "",
     "Creator Performance Summary:",
     memory.summary?.text || "No summarized creator memory available.",
     "",
-    "Use past successful patterns:",
-    formatEntries("Scripts", memory.scripts),
+    "Successful Historical Patterns (for Voice Matching):",
+    formatEntries("Past Scripts", memory.scripts),
     "",
-    formatEntries("Hooks", memory.hooks),
+    formatEntries("Past Hooks", memory.hooks),
     "",
-    formatEntries("Captions", memory.captions)
+    formatEntries("Past Captions", memory.captions),
+    "",
+    "FINAL INSTRUCTION: Your primary goal is to sound like the creator described in the Library DNA and Past Scripts section. Match their energy, word choice, and pacing precisely."
   ];
 
   return sections.join("\n");

@@ -219,6 +219,7 @@ export default function Generate() {
   const [uploadingBrand, setUploadingBrand] = useState(false)
   const [brandUploadStatus, setBrandUploadStatus] = useState("")
   const [isSaved, setIsSaved] = useState(false)
+  const [generationMeta, setGenerationMeta] = useState<{ usedBrand: boolean; usedMemory: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const hasOutput = Boolean(script || hooks.length || captions.length || threads.length)
@@ -245,6 +246,7 @@ export default function Generate() {
           goal,
           audience,
           contentType: type,
+          useBrandVoice,
           save: false
         })
       })
@@ -265,6 +267,7 @@ export default function Generate() {
       setAnalysisSummary(data.analysis.summary)
       setAnalysisImprovements(data.analysis.improvements)
       setIsSaved(false)
+      setGenerationMeta(result.meta || null)
 
       toast.success("Draft generated")
     } catch (err) {
@@ -364,6 +367,29 @@ export default function Generate() {
       if (fileInputRef.current) {
         fileInputRef.current.value = ""
       }
+    }
+  }
+
+  const clearBrandBrief = async () => {
+    setUploadingBrand(true)
+    try {
+      const res = await authFetch("/memory/brand", {
+        method: "DELETE"
+      })
+
+      const result = await res.json()
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Failed to clear brand brief")
+      }
+
+      setBrandUploadStatus("")
+      toast.success("Brand brief cleared successfully. Now using Library DNA only.")
+    } catch (error) {
+      console.error("Clear failed", error)
+      toast.error(error instanceof Error ? error.message : "Clear failed")
+    } finally {
+      setUploadingBrand(false)
     }
   }
 
@@ -486,7 +512,18 @@ export default function Generate() {
                     />
 
                     <div className="flex items-center justify-between px-4 pb-3 pt-1 text-xs text-white/30">
-                      <span>Be specific for better results</span>
+                      <div className="flex items-center gap-3">
+                        <span>Be specific for better results</span>
+                        {generationMeta ? (
+                          <div className="flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-2 py-0.5 font-medium text-indigo-300 animate-in fade-in slide-in-from-left-1">
+                            <Sparkles className="h-3 w-3" />
+                            <span>
+                              {generationMeta.usedMemory} memories
+                              {generationMeta.usedBrand ? " + Brand voice" : ""} recalled
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
                       <span>
                         {loading
                           ? "Generating draft..."
@@ -510,7 +547,7 @@ export default function Generate() {
                       <div>
                         <h3 className="text-lg font-medium text-white">Use Brand Voice</h3>
                         <p className="text-sm text-white/45">
-                          Apply your trained voice model for more consistent output
+                          Adapts to your Library DNA and stored brand guidelines
                         </p>
                       </div>
                     </div>
@@ -569,8 +606,19 @@ export default function Generate() {
                         className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-white transition-all duration-200 hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Upload className="h-4 w-4" />
-                        {uploadingBrand ? "Uploading..." : "Upload Brief"}
+                        {uploadingBrand ? "Processing..." : "Upload Brief"}
                       </button>
+
+                      {brandUploadStatus ? (
+                        <button
+                          type="button"
+                          onClick={clearBrandBrief}
+                          disabled={uploadingBrand}
+                          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 text-sm font-medium text-red-300 transition-all duration-200 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Clear Brief
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </div>

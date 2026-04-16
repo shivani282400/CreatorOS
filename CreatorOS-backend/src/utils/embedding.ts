@@ -1,25 +1,60 @@
 export const generateEmbedding = async (text: string): Promise<number[]> => {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not configured");
-  }
-
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      input: text,
+  const providers = [
+    {
+      name: "OpenAI",
+      url: "https://api.openai.com/v1/embeddings",
+      key: process.env.OPENAI_API_KEY,
       model: "text-embedding-3-small"
-    })
-  });
+    },
+    {
+      name: "OpenRouter",
+      url: "https://openrouter.ai/api/v1/embeddings",
+      key: process.env.OPENROUTER_API_KEY,
+      model: "openai/text-embedding-3-small"
+    }
+  ];
 
-  const data = await response.json();
+  let lastError: any = null;
 
-  if (!response.ok || !data?.data?.[0]?.embedding) {
-    throw new Error(data?.error?.message || "Embedding generation failed");
+  for (const provider of providers) {
+    if (!provider.key) {
+      console.warn(`[embedding] ${provider.name} key missing, skipping...`);
+      continue;
+    }
+
+    try {
+      const response = await fetch(provider.url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${provider.key}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://creatoros.ai", // Required for OpenRouter
+          "X-Title": "CreatorOS"
+        },
+        body: JSON.stringify({
+          input: text,
+          model: provider.model
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.data?.[0]?.embedding) {
+        const apiError = data?.error?.message || "extraction failed";
+        throw new Error(`${provider.name} error: ${apiError}`);
+      }
+
+      console.info(`[embedding] successfully generated using ${provider.name}`);
+      return data.data[0].embedding as number[];
+    } catch (error: any) {
+      console.error(`[embedding] ${provider.name} failed:`, error);
+      lastError = error;
+    }
   }
 
-  return data.data[0].embedding as number[];
+  throw new Error(
+    lastError?.message || "No embedding providers configured. Please check OPENAI_API_KEY or OPENROUTER_API_KEY in your environment variables."
+  );
 };
+
+

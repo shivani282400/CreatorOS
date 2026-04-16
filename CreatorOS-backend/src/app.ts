@@ -84,7 +84,10 @@ export const buildApp = () => {
 
   app.setErrorHandler((error, request, reply) => {
     app.log.error(error);
-    reply.status(500).send({ error: "Internal Server Error" });
+    reply.status(error.statusCode || 500).send({ 
+      error: "Internal Server Error", 
+      message: process.env.NODE_ENV === "development" ? error.message : "An unexpected error occurred."
+    });
   });
 
   return app;

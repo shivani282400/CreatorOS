@@ -16,24 +16,47 @@ const getSafeMemoryContext = async (
     niche?: string | null;
     tone?: string | null;
     platform?: string | null;
-  }
+  },
+  useBrandVoice: boolean = true
 ) => {
   try {
     const memory = await retrieveContextBundle(app, userId, query);
 
-    return buildMemoryContext(memory, user);
-  } catch (error) {
-    app.log.error(error);
-    return buildMemoryContext(
-      {
-        scripts: [],
-        hooks: [],
-        captions: []
-      },
-      user
+    if (!useBrandVoice) {
+      memory.brand = null;
+    }
+
+    const usedBrand = !!memory.brand?.text;
+    const usedMemory = (memory.scripts?.length ?? 0) + (memory.hooks?.length ?? 0) + (memory.captions?.length ?? 0);
+
+    app.log.info(
+      { userId, usedBrand, usedMemory, hasSummary: !!memory.summary },
+      "[ai:generate] Memory context retrieved"
     );
+
+    console.log(`[ai:generate] Brand memory: ${usedBrand ? memory.brand!.text.slice(0, 120) + "..." : "NOT FOUND"}`);
+    console.log(`[ai:generate] Retrieved memory entries: ${usedMemory}`);
+
+    return {
+      context: buildMemoryContext(memory, user),
+      usedBrand,
+      usedMemory
+    };
+  } catch (error: any) {
+    if (error.message?.includes("not configured") || error.message?.includes("extraction failed")) {
+      app.log.warn({ userId, error: error.message }, "Memory context retrieval aborted: Embedding config issue. Proceeding without memory.");
+    } else {
+      app.log.error({ userId, err: error }, "Unexpected error retrieving memory context. Proceeding without memory.");
+    }
+
+    return {
+      context: buildMemoryContext({ scripts: [], hooks: [], captions: [] }, user),
+      usedBrand: false,
+      usedMemory: 0
+    };
   }
 };
+
 
 export async function aiRoutes(app: FastifyInstance) {
   app.post("/ai/generate", { preHandler: [app.authenticate] }, async (request, reply) => {
@@ -45,6 +68,7 @@ export async function aiRoutes(app: FastifyInstance) {
       goal,
       audience,
       contentType,
+      useBrandVoice = true,
       save = true
     } = request.body as {
       topic: string;
@@ -54,6 +78,7 @@ export async function aiRoutes(app: FastifyInstance) {
       goal?: string;
       audience?: string;
       contentType?: string;
+      useBrandVoice?: boolean;
       save?: boolean;
     };
 
@@ -70,11 +95,14 @@ export async function aiRoutes(app: FastifyInstance) {
     const resolvedNiche = niche || userProfile.niche || "general";
     const resolvedTone = tone || userProfile.tone || "educational";
 
-    const context = await getSafeMemoryContext(app, request.user.id, `${topic} ${goal ?? ""} ${audience ?? ""}`, {
-      niche: resolvedNiche,
-      tone: resolvedTone,
-      platform: resolvedPlatform
-    });
+    const { context, usedBrand, usedMemory } = await getSafeMemoryContext(
+      app,
+      request.user.id,
+      `${topic} ${goal ?? ""} ${audience ?? ""}`,
+      { niche: resolvedNiche, tone: resolvedTone, platform: resolvedPlatform },
+      useBrandVoice
+    );
+
     const prompt = buildContentPrompt(
       topic,
       resolvedPlatform,
@@ -94,7 +122,8 @@ export async function aiRoutes(app: FastifyInstance) {
       if (!save) {
         return {
           success: true,
-          data: content
+          data: content,
+          meta: { usedBrand, usedMemory }
         };
       }
 
@@ -114,7 +143,8 @@ export async function aiRoutes(app: FastifyInstance) {
 
       return {
         success: true,
-        data: savedContent
+        data: savedContent,
+        meta: { usedBrand, usedMemory }
       };
     } catch (error) {
       app.log.error({ err: error }, "AI generation failed");

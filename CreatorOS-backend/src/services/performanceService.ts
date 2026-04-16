@@ -70,7 +70,7 @@ export const addPerformance = async (
     [engagementScore, userId, calendarId]
   );
 
-  // 🔥 STEP 4 — AUTO MEMORY TRIGGER (ADDED SAFELY)
+  // STEP 4 — AUTO MEMORY TRIGGER (ADDED SAFELY)
   try {
     await autoGenerateMemory(userId);
   } catch (error) {

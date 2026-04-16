@@ -452,14 +452,34 @@ export const getDominantStyle = async (userId: number): Promise<StyleFeatures> =
 };
 
 export const retrieveContextBundle = async (_app: unknown, userId: number, query: string) => {
-  const [scripts, hooks, captions, brand, style, summary] = await Promise.all([
-    retrieveMemory({ userId, query, type: "script", limit: 3 }),
-    retrieveMemory({ userId, query, type: "hook", limit: 3 }),
-    retrieveMemory({ userId, query, type: "caption", limit: 3 }),
+  // ✅ Step 1: Always fetch brand/summary/style first — these use simple SQL (no embeddings)
+  // They will ALWAYS succeed even if the embedding API is down
+  const [brand, style, summary] = await Promise.all([
     retrieveBrandMemory(userId),
     getDominantStyle(userId),
     retrieveMemorySummary(userId)
   ]);
+
+  console.log(`[memory:bundle] brand="${brand ? brand.text.slice(0, 80) + "..." : "NONE"}", summary="${summary ? "EXISTS" : "NONE"}"`);
+
+  // ✅ Step 2: Attempt vector-search retrieval separately so failures don't kill brand context
+  let scripts: any[] = [];
+  let hooks: any[] = [];
+  let captions: any[] = [];
+
+  try {
+    const [s, h, c] = await Promise.all([
+      retrieveMemory({ userId, query, type: "script", limit: 3 }),
+      retrieveMemory({ userId, query, type: "hook", limit: 3 }),
+      retrieveMemory({ userId, query, type: "caption", limit: 3 })
+    ]);
+    scripts = s;
+    hooks = h;
+    captions = c;
+    console.log(`[memory:bundle] vector search OK — scripts=${scripts.length}, hooks=${hooks.length}, captions=${captions.length}`);
+  } catch (error: any) {
+    console.warn(`[memory:bundle] vector search failed (embedding API), falling back to empty. Brand context still loaded. Error: ${error?.message}`);
+  }
 
   return {
     brand,
@@ -468,5 +488,100 @@ export const retrieveContextBundle = async (_app: unknown, userId: number, query
     scripts,
     hooks,
     captions
+  };
+};
+
+export const deleteBrandMemory = async (userId: number) => {
+  console.log(`[memory:delete-brand] for userId=${userId}`);
+  return await db.query(
+    "DELETE FROM memory_embeddings WHERE user_id = $1 AND type = 'brand'",
+    [userId]
+  );
+};
+
+export const performBackfill = async (userId: number) => {
+  console.log(`[memory:backfill] START for userId=${userId}`);
+
+  // 1. Fetch all content for this user
+  const contentResult = await db.query(
+    `SELECT id, topic, platform, script, hooks, captions, score FROM content WHERE user_id = $1 ORDER BY created_at DESC`,
+    [userId]
+  );
+  const rows = contentResult.rows;
+
+  if (!rows.length) {
+    return { success: true, message: "No content found to backfill", backfilled: 0, skipped: 0 };
+  }
+
+  // 2. Find already indexed content_ids to avoid duplicates
+  const existingResult = await db.query(
+    `SELECT DISTINCT content_id FROM memory_embeddings WHERE user_id = $1 AND content_id IS NOT NULL`,
+    [userId]
+  );
+  const alreadyIndexed = new Set(existingResult.rows.map((r) => Number(r.content_id)));
+
+  let backfilled = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (const row of rows) {
+    if (alreadyIndexed.has(Number(row.id))) {
+      skipped++;
+      continue;
+    }
+
+    console.log(`[memory:backfill] Indexing content ${row.id}...`);
+
+    const base = {
+      userId,
+      contentId: Number(row.id),
+      score: row.score ? Number(row.score) : null,
+      metadata: { topic: row.topic || "", platform: row.platform || "" }
+    };
+
+    // Store script
+    if (row.script?.trim()) {
+      try {
+        await storeMemory({ ...base, type: "script", text: row.script });
+        backfilled++;
+      } catch (err: any) {
+        errors.push(`Content ${row.id} script: ${err.message}`);
+      }
+    }
+
+    // Store hooks (limit to 3)
+    const hooks = Array.isArray(row.hooks) ? row.hooks : [];
+    for (const hook of hooks.slice(0, 3)) {
+      if (!hook?.trim()) continue;
+      try {
+        await storeMemory({ ...base, type: "hook", text: hook });
+        backfilled++;
+      } catch (err: any) {
+        errors.push(`Content ${row.id} hook: ${err.message}`);
+      }
+    }
+
+    // Store captions (limit to 2)
+    const captions = Array.isArray(row.captions) ? row.captions : [];
+    for (const caption of captions.slice(0, 2)) {
+      if (!caption?.trim()) continue;
+      try {
+        await storeMemory({ ...base, type: "caption", text: caption });
+        backfilled++;
+      } catch (err: any) {
+        errors.push(`Content ${row.id} caption: ${err.message}`);
+      }
+    }
+  }
+
+  console.log(`[memory:backfill] DONE for userId=${userId}. Backfilled: ${backfilled}, Errors: ${errors.length}`);
+
+  return {
+    success: true,
+    message: `Backfill complete. ${backfilled} entries indexed, ${skipped} already existing.`,
+    backfilled,
+    skipped,
+    contentProcessed: rows.length,
+    errors: errors.length > 0 ? errors : undefined
   };
 };
