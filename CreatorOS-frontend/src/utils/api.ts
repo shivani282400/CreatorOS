@@ -58,7 +58,10 @@ export const apiFetch = async (path: string, init: RequestInit = {}) => {
 
   for (const baseUrl of candidates) {
     try {
-      return await fetch(buildApiUrl(baseUrl, path), init);
+      return await fetch(buildApiUrl(baseUrl, path), {
+        credentials: "include",
+        ...init
+      });
     } catch (error) {
       lastError = error;
     }
@@ -69,16 +72,35 @@ export const apiFetch = async (path: string, init: RequestInit = {}) => {
     : new Error("Could not reach the backend");
 };
 
-export const authFetch = (path: string, init: RequestInit = {}) => {
-  const token = getStoredToken();
-  const headers = new Headers(init.headers);
+export const authFetch = async (path: string, init: RequestInit = {}) => {
+  const requestWithToken = (token: string | null) => {
+    const headers = new Headers(init.headers);
 
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    return apiFetch(path, {
+      ...init,
+      headers
+    });
+  };
+
+  const response = await requestWithToken(getStoredToken());
+  if (response.status !== 401) return response;
+
+  const refreshResponse = await apiFetch("/auth/refresh", { method: "POST" });
+  if (!refreshResponse.ok) {
+    clearStoredToken();
+    return response;
   }
 
-  return apiFetch(path, {
-    ...init,
-    headers
-  });
+  const refreshed = await refreshResponse.json();
+  if (!refreshed.token || typeof refreshed.token !== "string") {
+    clearStoredToken();
+    return response;
+  }
+
+  setStoredToken(refreshed.token);
+  return requestWithToken(refreshed.token);
 };

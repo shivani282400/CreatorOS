@@ -7,6 +7,8 @@ import { calendarRoutes } from "./routes/calendar";
 import { memoryRoutes } from "./routes/memory";
 import { performanceRoutes } from "./routes/performance";
 import jwt from "@fastify/jwt";
+import cookie from "@fastify/cookie";
+import rateLimit from "@fastify/rate-limit";
 import { authRoutes } from "./routes/auth";
 import { userRoutes } from "./routes/user";
 
@@ -26,6 +28,7 @@ declare module "@fastify/jwt" {
 export const buildApp = () => {
   const app = Fastify({
     logger: true,
+    trustProxy: process.env.TRUST_PROXY === "true",
     ignoreTrailingSlash: true,
     ignoreDuplicateSlashes: true
   });
@@ -34,8 +37,11 @@ export const buildApp = () => {
     origin: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: false
+    credentials: true
   });
+
+  app.register(cookie);
+  app.register(rateLimit, { global: false });
 
   app.register(multipart, {
     limits: {

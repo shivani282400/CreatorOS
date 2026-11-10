@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import MainLayout from "../layouts/MainLayout";
 import PageWrapper from "../components/PageWrapper";
-import { authFetch, clearStoredToken } from "../utils/api";
+import { apiFetch, authFetch, clearStoredToken } from "../utils/api";
 
 type UserProfile = {
   id: number
@@ -125,7 +125,12 @@ export default function Profile() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await apiFetch("/auth/logout", { method: "POST" });
+    } catch {
+      // Local credentials must still be cleared if the backend is unavailable.
+    }
     clearStoredToken();
     localStorage.removeItem("creator_profile");
     localStorage.removeItem("token");

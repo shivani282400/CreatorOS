@@ -1,6 +1,5 @@
 import { generateWithGroq } from "./groq";
 import { generateWithOpenRouter } from "./openrouter";
-import { generateWithTogether } from "./together";
 import { AIContentSchema, type AIContent } from "../../utils/aiSchema";
 import { cleanAIOutput } from "../../utils/cleanAIOutput";
 
@@ -210,13 +209,6 @@ export const generateAI = async (prompt: string): Promise<AIContent> => {
     return await generateWithProvider("Groq", generateWithGroq, prompt);
   } catch (error) {
     console.log("Groq failed → switching to OpenRouter");
-
-    try {
-      return await generateWithProvider("OpenRouter", generateWithOpenRouter, prompt);
-    } catch (error) {
-      console.log("OpenRouter failed → switching to Together");
-
-      return await generateWithProvider("Together", generateWithTogether, prompt);
-    }
+    return await generateWithProvider("OpenRouter", generateWithOpenRouter, prompt);
   }
 };

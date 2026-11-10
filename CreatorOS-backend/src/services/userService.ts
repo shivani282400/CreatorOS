@@ -4,14 +4,14 @@ import { storeBrandMemory } from "./memoryService";
 export type UserProfile = {
   id: number
   email: string
-  password: string
+  password: string | null
   niche: string | null
   tone: string | null
   platform: string | null
   created_at: string
 }
 
-export const createUser = async (email: string, password: string) => {
+export const createUser = async (email: string, password: string | null = null) => {
   const result = await db.query(
     `INSERT INTO users (email, password)
      VALUES ($1, $2)

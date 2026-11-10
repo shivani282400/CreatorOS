@@ -54,12 +54,44 @@ CREATE TABLE IF NOT EXISTS calendar (
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
+  password TEXT,
   niche TEXT,
   tone TEXT,
   platform TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
+
+CREATE TABLE IF NOT EXISTS auth_otps (
+  id BIGSERIAL PRIMARY KEY,
+  email TEXT NOT NULL,
+  otp_hash TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  attempts SMALLINT NOT NULL DEFAULT 0,
+  verified_at TIMESTAMPTZ,
+  invalidated_at TIMESTAMPTZ,
+  request_ip TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_otps_email_created
+ON auth_otps (email, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_auth_otps_ip_created
+ON auth_otps (request_ip, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS auth_refresh_sessions (
+  id BIGSERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  token_hash TEXT UNIQUE NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_refresh_sessions_token
+ON auth_refresh_sessions (token_hash);
 
 ALTER TABLE content ADD COLUMN IF NOT EXISTS score INTEGER;
 ALTER TABLE content ADD COLUMN IF NOT EXISTS analysis JSONB;

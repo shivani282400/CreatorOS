@@ -78,7 +78,7 @@ CreatorOS covers more than content writing.
 - **Multi-provider generation**
   - Groq
   - OpenRouter
-  - Together
+- **Provider fallback:** Groq is primary; OpenRouter is used if Groq cannot generate a valid response.
 - **Structured JSON output**
   - `script`
   - `hooks`
@@ -143,7 +143,7 @@ CreatorOS covers more than content writing.
 
 ### 👤 User System
 
-- **JWT authentication**
+- **Passwordless email OTP authentication** with JWT access tokens and rotating refresh sessions
 - **Protected API routes**
 - **Profile preference management**
 - **Stored creator profile fields**
@@ -218,7 +218,6 @@ Generate → Store → Embed → Retrieve → Personalize → Schedule → Publi
 ### AI Layer
 - Groq  
 - OpenRouter  
-- Together  
 - OpenAI (embeddings)  
 
 ---
@@ -322,10 +321,13 @@ Create a `.env` file in `CreatorOS-backend/`.
 PORT=4000
 DATABASE_URL=postgresql://user:password@localhost:5432/creatoros
 JWT_SECRET=your_jwt_secret
+OTP_HMAC_SECRET=your_separate_otp_hmac_secret
+RESEND_API_KEY=re_your_resend_api_key
+RESEND_FROM_EMAIL=CreatorOS <auth@your-verified-domain.example>
+TRUST_PROXY=false
 
 GROQ_API_KEY=your_groq_key
 OPENROUTER_API_KEY=your_openrouter_key
-TOGETHER_API_KEY=your_together_key
 OPENAI_API_KEY=your_openai_key
 ```
 
@@ -337,14 +339,36 @@ OPENAI_API_KEY=your_openai_key
   - PostgreSQL connection string
 - **JWT_SECRET**
   - Secret used for token signing
+- **OTP_HMAC_SECRET**
+  - Separate secret used to hash verification codes; use a long random value
+- **RESEND_API_KEY**
+  - Backend-only Resend API key for transactional email delivery
+- **RESEND_FROM_EMAIL**
+  - A sender address from a Resend-verified domain (the Resend onboarding sender is development-only)
+- **TRUST_PROXY**
+  - Set to `true` only when the backend is behind a trusted reverse proxy, so OTP IP rate limiting uses the client address
 - **GROQ_API_KEY**
   - Groq provider key
 - **OPENROUTER_API_KEY**
   - OpenRouter provider key
-- **TOGETHER_API_KEY**
-  - Together provider key
 - **OPENAI_API_KEY**
   - Embeddings provider key
+
+---
+
+## Passwordless authentication
+
+CreatorOS signs users in using a six-digit email code. `POST /auth/otp/send` accepts `{ "email": "user@example.com" }` and sends a code valid for five minutes. Requests are rate-limited by IP and email, and the same email must wait 60 seconds before another code can be sent.
+
+`POST /auth/otp/verify` accepts `{ "email": "user@example.com", "otp": "123456" }`. A successful verification creates a new user when necessary and returns the existing JWT bearer-token response shape: `{ user, token }`. Codes are HMAC-hashed, limited to five attempts, invalidated after use, and verified inside a database transaction.
+
+Access tokens expire after 15 minutes. A rotating, HttpOnly `creatoros_refresh` cookie supports `POST /auth/refresh`; call `POST /auth/logout` to revoke it and clear the cookie. The frontend continues to send the access token as `Authorization: Bearer <token>` for protected APIs.
+
+### Database and deployment
+
+On startup, CreatorOS applies the idempotent schema additions for `auth_otps` and `auth_refresh_sessions`; for managed deployments, run the contents of `CreatorOS-backend/db/schema.sql` through the normal database deployment process before rolling out the application. Existing `users.password` values are retained, while the column becomes nullable for passwordless accounts.
+
+Configure a verified Resend sending domain before production. Set `RESEND_FROM_EMAIL` to an address on that domain, keep `RESEND_API_KEY` only in the backend deployment environment, and never expose either variable through Vite. Use HTTPS in production so the refresh cookie is marked `Secure`.
 
 ---
 
@@ -369,7 +393,6 @@ OPENAI_API_KEY=your_openai_key
 
 - **Groq**
 - **OpenRouter**
-- **Together**
 - **OpenAI embeddings**
 
 ---
@@ -430,4 +453,3 @@ It is a **content operating system** built for creators who want a repeatable, l
 - **Plan publishing**
 - **Learn from outcomes**
 - **Compound quality over time**
-
