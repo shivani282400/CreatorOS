@@ -11,6 +11,9 @@ import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
 import { authRoutes } from "./routes/auth";
 import { userRoutes } from "./routes/user";
+import { insightsRoutes } from "./routes/insights";
+import { db } from "./plugins/db";
+import { getJwtSecret, isOriginAllowed } from "./config";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -33,11 +36,22 @@ export const buildApp = () => {
     ignoreDuplicateSlashes: true
   });
 
+  const jwtSecret = getJwtSecret();
+
   app.register(cors, {
-    origin: true,
+    origin: (origin, callback) => {
+      callback(null, isOriginAllowed(origin));
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
+  });
+
+  app.addHook("onSend", async (_request, reply) => {
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("Referrer-Policy", "no-referrer");
+    reply.header("Cross-Origin-Resource-Policy", "same-site");
   });
 
   app.register(cookie);
@@ -50,7 +64,7 @@ export const buildApp = () => {
   });
 
   app.register(jwt, {
-    secret: process.env.JWT_SECRET || "supersecret"
+    secret: jwtSecret
   });
 
   app.decorate("authenticate", async function authenticate(request: any, reply: any) {
@@ -68,6 +82,7 @@ export const buildApp = () => {
   app.register(calendarRoutes);
   app.register(memoryRoutes);
   app.register(performanceRoutes);
+  app.register(insightsRoutes);
 
   app.get("/", async () => {
     return { name: "CreatorOS API", status: "running", version: "1.0.0" };
@@ -77,23 +92,30 @@ export const buildApp = () => {
     return { status: "ok" };
   });
 
-  app.get("/test-db", async (request, reply) => {
+  // Readiness probe: confirms the database is reachable without leaking error details.
+  app.get("/health/ready", async (request, reply) => {
     try {
-      const { db } = require("./plugins/db");
-      const result = await db.query("SELECT NOW()");
-      return { status: "ok", time: result.rows[0].now, message: "Database connection successful!" };
-    } catch (error: any) {
-      request.log.error(error);
-      return reply.status(500).send({ error: "Database connection failed", details: error.message });
+      await db.query("SELECT 1");
+      return { status: "ok", database: "up" };
+    } catch (error) {
+      request.log.error({ err: error }, "Readiness check failed");
+      return reply.code(503).send({ status: "degraded", database: "down" });
     }
   });
 
   app.setErrorHandler((error: any, request, reply) => {
-    app.log.error(error);
-    reply.status(error.statusCode || 500).send({ 
-      error: "Internal Server Error", 
-      message: process.env.NODE_ENV === "development" ? error.message : "An unexpected error occurred."
-    });
+    const statusCode = error.statusCode && error.statusCode >= 400 ? error.statusCode : 500;
+
+    if (statusCode >= 500) {
+      request.log.error({ err: error }, "Unhandled error");
+      return reply.status(statusCode).send({
+        error: "Internal Server Error",
+        message: process.env.NODE_ENV === "development" ? error.message : "An unexpected error occurred."
+      });
+    }
+
+    // Client errors (validation, rate limit, payload too large, ...) are safe to surface.
+    return reply.status(statusCode).send({ error: error.message });
   });
 
   return app;

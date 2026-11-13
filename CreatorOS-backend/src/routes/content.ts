@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import { z } from "zod";
 import {
   saveContent,
   getContent,
@@ -8,11 +9,37 @@ import {
   getTopPerformingContent
 } from "../services/contentService";
 
+const stringList = z.array(z.string().max(2000)).max(30).default([]);
+
+const contentSchema = z.object({
+  topic: z.string().trim().min(1, "Topic is required").max(500),
+  platform: z.string().trim().min(1, "Platform is required").max(60),
+  script: z.string().max(30000).default(""),
+  hooks: stringList,
+  captions: stringList,
+  threads: stringList,
+  score: z.number().min(0).max(100).nullish(),
+  analysis: z.record(z.string(), z.unknown()).nullish(),
+  parent_id: z.number().int().positive().nullish()
+});
+
 export async function contentRoutes(app: FastifyInstance) {
 
-  app.post("/content", { preHandler: [app.authenticate] }, async (request) => {
+  app.post("/content", { preHandler: [app.authenticate] }, async (request, reply) => {
 
-    const saved = await saveContent(request.body, request.user.id);
+    const parsed = contentSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.code(400).send({
+        success: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid content"
+      });
+    }
+
+    const saved = await saveContent(
+      { ...parsed.data, score: parsed.data.score == null ? null : Math.round(parsed.data.score) },
+      request.user.id
+    );
 
     return {
       success: true,
@@ -75,8 +102,13 @@ export async function contentRoutes(app: FastifyInstance) {
   app.delete("/content/:id", { preHandler: [app.authenticate] }, async (request) => {
 
     const { id } = request.params as { id: string };
+    const contentId = Number(id);
 
-    const deleted = await deleteContent(Number(id), request.user.id);
+    if (!Number.isInteger(contentId) || contentId <= 0) {
+      return { success: false, error: "Invalid content id" };
+    }
+
+    const deleted = await deleteContent(contentId, request.user.id);
 
     if (!deleted) {
       return {

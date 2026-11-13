@@ -96,3 +96,17 @@ ALTER TABLE calendar ADD COLUMN IF NOT EXISTS comments INTEGER DEFAULT 0;
 ALTER TABLE calendar ADD COLUMN IF NOT EXISTS shares INTEGER DEFAULT 0;
 ALTER TABLE calendar ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'scheduled';
 ALTER TABLE memory_embeddings ADD COLUMN IF NOT EXISTS style JSONB;
+
+-- Added for faster dashboard / insights queries and case-insensitive login.
+-- All statements are idempotent, so this file is safe to run against an existing database.
+CREATE INDEX IF NOT EXISTS idx_memory_user_type
+ON memory_embeddings(user_id, type);
+
+CREATE INDEX IF NOT EXISTS idx_content_user_created
+ON content(user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_content
+ON calendar(content_id);
+
+CREATE INDEX IF NOT EXISTS idx_users_email_lower
+ON users (LOWER(email));

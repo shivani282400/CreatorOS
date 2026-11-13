@@ -1,0 +1,42 @@
+# Render Blueprint: New → Blueprint → select this repo.
+services:
+  - type: web
+    name: creatoros-api
+    runtime: node
+    plan: free
+    rootDir: CreatorOS-backend
+    # --include=dev because TypeScript is a dev dependency and NODE_ENV=production is set below
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OTP_HMAC_SECRET
+        generateValue: true
+      # Supabase pooler connection string (Settings → Database → Connection pooling)
+      - key: DATABASE_URL
+        sync: false
+      # Your Vercel URL, e.g. https://creatoros.vercel.app
+      - key: FRONTEND_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      # Password-only production: no email provider is configured, so OTP is hidden automatically.
+      - key: DEMO_EMAIL
+        value: demo@creatoros.app
+      - key: DEMO_PASSWORD
+        sync: false
+      - key: DEMO_SHOW_ON_LOGIN
+        value: "true"

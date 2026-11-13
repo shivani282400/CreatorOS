@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import MainLayout from "../layouts/MainLayout";
 import PageWrapper from "../components/PageWrapper";
-import { apiFetch, authFetch, clearStoredToken } from "../utils/api";
+import { apiFetch, authFetch, clearStoredToken, describeError, readJson } from "../utils/api";
 
 type UserProfile = {
   id: number
@@ -50,6 +50,10 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -122,6 +126,41 @@ export default function Profile() {
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordMessage(null);
+
+    if (newPassword.length < 8) {
+      setPasswordMessage({ type: "error", text: "New password must be at least 8 characters" });
+      return;
+    }
+
+    setPasswordSaving(true);
+
+    try {
+      const res = await authFetch("/auth/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: currentPassword || undefined,
+          newPassword
+        })
+      });
+      const result = await readJson<{ error?: string }>(res);
+
+      if (!res.ok) {
+        throw new Error(result?.error || "Could not update your password");
+      }
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setPasswordMessage({ type: "success", text: "Password updated. You can now sign in with it." });
+    } catch (passwordError) {
+      setPasswordMessage({ type: "error", text: describeError(passwordError, "Could not update your password") });
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -217,6 +256,45 @@ export default function Profile() {
               className="w-full rounded-lg bg-[#7c3aed] px-4 py-2.5 text-white transition-all duration-200 hover:bg-[#6d28d9] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save Preferences"}
+            </button>
+          </div>
+
+          <div className="glass-panel rounded-2xl border border-white/10 p-5 space-y-3">
+            <h2 className="text-white font-medium">Password</h2>
+            <p className="text-sm text-gray-400">
+              Set or change the password used for email and password sign-in. Leave the current
+              password blank if you have never set one.
+            </p>
+
+            <input
+              type="password"
+              autoComplete="current-password"
+              placeholder="Current password (if you have one)"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-purple-500/40"
+            />
+            <input
+              type="password"
+              autoComplete="new-password"
+              placeholder="New password (min. 8 characters)"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-purple-500/40"
+            />
+
+            {passwordMessage ? (
+              <p role="status" className={`text-sm ${passwordMessage.type === "success" ? "text-emerald-400" : "text-red-400"}`}>
+                {passwordMessage.text}
+              </p>
+            ) : null}
+
+            <button
+              onClick={handleChangePassword}
+              disabled={passwordSaving || !newPassword}
+              className="w-full rounded-lg bg-[#7c3aed] px-4 py-2.5 text-white transition-all duration-200 hover:bg-[#6d28d9] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {passwordSaving ? "Saving..." : "Update password"}
             </button>
           </div>
 

@@ -3,7 +3,8 @@ import { CalendarClock, ExternalLink, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import PageWrapper from "../components/PageWrapper";
-import { authFetch } from "../utils/api";
+import { authFetch, describeError } from "../utils/api";
+import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 
 type UploadedItem = {
   id: number;
@@ -53,24 +54,36 @@ export default function Uploaded() {
   const [selectedItem, setSelectedItem] = useState<UploadedItem | null>(null);
   const [performanceForm, setPerformanceForm] = useState<PerformanceForm>(emptyPerformanceForm);
 
+  const [loadError, setLoadError] = useState("");
+
   const fetchUploaded = async () => {
     const response = await authFetch("/content/uploaded");
+
+    if (!response.ok) {
+      throw new Error("We couldn't load your uploaded content.");
+    }
+
     const result = await response.json();
     setContent(result.data ?? []);
   };
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        await fetchUploaded();
-      } catch (error) {
-        console.error("Failed to fetch uploaded content", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const load = async () => {
+    setLoading(true);
+    setLoadError("");
 
-    load();
+    try {
+      await fetchUploaded();
+    } catch (error) {
+      console.error("Failed to fetch uploaded content", error);
+      setLoadError(describeError(error, "We couldn't load your uploaded content."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const groupedContent = useMemo(() => {
@@ -137,9 +150,7 @@ export default function Uploaded() {
     return (
       <MainLayout>
         <PageWrapper>
-          <div className="mx-auto max-w-7xl rounded-[28px] border border-white/10 bg-white/5 p-8 text-sm text-white/60 backdrop-blur-xl">
-            Loading uploaded content...
-          </div>
+          <LoadingState label="Loading uploaded content..." />
         </PageWrapper>
       </MainLayout>
     );
@@ -166,10 +177,13 @@ export default function Uploaded() {
             </div>
           </section>
 
-          {content.length === 0 ? (
-            <section className="rounded-[28px] border border-white/10 bg-white/5 p-10 text-center text-white/55 backdrop-blur-xl">
-              No past scheduled content yet.
-            </section>
+          {loadError ? (
+            <ErrorState title="Couldn't load uploaded content" message={loadError} onRetry={() => void load()} />
+          ) : content.length === 0 ? (
+            <EmptyState
+              title="No past scheduled content yet"
+              description="Once a scheduled post's date passes it moves here, where you can add its real views and likes."
+            />
           ) : (
             <div className="space-y-8">
               {Object.entries(groupedContent).map(([date, items]) => (

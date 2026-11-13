@@ -34,7 +34,7 @@ const query = async (sql, params = []) => {
   }
   if (sql.includes("UPDATE auth_otps SET verified_at")) { const otp = state.otps.find((row) => row.id === params[0]); otp.verified_at = new Date(); otp.invalidated_at = new Date(); return { rows: [] }; }
   if (sql.includes("UPDATE auth_otps SET invalidated_at")) { const otp = state.otps.find((row) => row.id === params[0]); if (otp) otp.invalidated_at = new Date(); return { rows: [] }; }
-  if (sql.startsWith("SELECT * FROM users WHERE email")) return { rows: state.users.filter((user) => user.email === params[0]).slice(0, 1) };
+  if (sql.startsWith("SELECT * FROM users WHERE LOWER(email)")) return { rows: state.users.filter((user) => user.email.toLowerCase() === String(params[0]).toLowerCase()).slice(0, 1) };
   if (sql.includes("INSERT INTO users")) { const user = { id: state.nextUserId++, email: params[0], password: params[1], niche: null, tone: null, platform: null, created_at: new Date().toISOString() }; state.users.push(user); return { rows: [user] }; }
   if (sql.includes("INSERT INTO auth_refresh_sessions")) { state.sessions.push({ id: state.nextSessionId++, user_id: params[0], token_hash: params[1], expires_at: new Date(params[2]), revoked_at: null }); return { rows: [] }; }
   if (sql.includes("FROM auth_refresh_sessions s JOIN users")) { const session = state.sessions.find((row) => row.token_hash === params[0] && !row.revoked_at && row.expires_at > new Date()); const user = session && state.users.find((row) => row.id === session.user_id); return { rows: session && user ? [{ ...session, user_id: user.id, email: user.email, password: user.password, niche: user.niche, tone: user.tone, platform: user.platform, created_at: user.created_at }] : [] }; }

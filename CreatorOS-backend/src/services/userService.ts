@@ -16,7 +16,7 @@ export const createUser = async (email: string, password: string | null = null) 
     `INSERT INTO users (email, password)
      VALUES ($1, $2)
      RETURNING id, email, niche, tone, platform, created_at`,
-    [email, password]
+    [email.trim().toLowerCase(), password]
   );
 
   const user = result.rows[0];
@@ -30,23 +30,31 @@ export const createUser = async (email: string, password: string | null = null) 
   return user;
 };
 
+/**
+ * Case-insensitive lookup so accounts created before emails were normalised
+ * (e.g. "Shivani@Gmail.com") are still found instead of being duplicated.
+ */
 export const findUserByEmail = async (email: string): Promise<UserProfile | null> => {
   const result = await db.query(
-    "SELECT * FROM users WHERE email = $1 LIMIT 1",
-    [email]
+    "SELECT * FROM users WHERE LOWER(email) = LOWER($1) ORDER BY id ASC LIMIT 1",
+    [email.trim()]
   );
 
-  const updatedUser = result.rows[0] ?? null;
+  const user = result.rows[0] ?? null;
 
-  if (updatedUser) {
-    try {
-      await storeBrandMemory(updatedUser);
-    } catch (error) {
-      console.error("Brand memory storage failed:", error);
-    }
+  if (user) {
+    // Refresh the brand embedding in the background so login is never blocked
+    // (or broken) by a slow or unavailable embedding provider.
+    void storeBrandMemory(user).catch((error) => {
+      console.error("Brand memory storage failed:", error instanceof Error ? error.message : error);
+    });
   }
 
-  return updatedUser;
+  return user;
+};
+
+export const setUserPassword = async (id: number, passwordHash: string) => {
+  await db.query("UPDATE users SET password = $2 WHERE id = $1", [id, passwordHash]);
 };
 
 export const getUserById = async (id: number): Promise<UserProfile | null> => {

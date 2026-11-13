@@ -11,8 +11,10 @@ import { useNavigate } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
 import PageWrapper from "../components/PageWrapper"
 import MemorySummaryPanel from "../components/MemorySummaryPanel"
-import { authFetch } from "../utils/api"
+import { authFetch, describeError } from "../utils/api"
 import ContentDNA from "../components/ContentDNA"
+import InsightsPanel from "../components/InsightsPanel"
+import { ErrorState } from "../components/ui/States"
 
 
 type ContentItem = {
@@ -130,14 +132,23 @@ export default function Dashboard() {
   const [summary, setSummary] = useState<string | null>(null)
   const [styleInsights, setStyleInsights] = useState<StyleInsights | null>(null)
   const [memoryLoading, setMemoryLoading] = useState(true)
+  const [loadError, setLoadError] = useState("")
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     const fetchDashboardData = async () => {
+      setLoading(true)
+      setLoadError("")
+
       try {
         const [contentRes, calendarRes] = await Promise.all([
           authFetch("/content"),
           authFetch("/calendar")
         ])
+
+        if (!contentRes.ok || !calendarRes.ok) {
+          throw new Error("We couldn't load your content right now.")
+        }
 
         const [contentResult, calendarResult] = await Promise.all([
           contentRes.json(),
@@ -148,13 +159,14 @@ export default function Dashboard() {
         setCalendar(calendarResult.data || [])
       } catch (error) {
         console.error("Failed to load dashboard data", error)
+        setLoadError(describeError(error, "We couldn't load your content right now."))
       } finally {
         setLoading(false)
       }
     }
 
     fetchDashboardData()
-  }, [])
+  }, [reloadKey])
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -274,6 +286,17 @@ export default function Dashboard() {
   </div>
 )}
           </section>
+
+          {loadError ? (
+            <ErrorState
+              compact
+              title="Couldn't load your dashboard data"
+              message={loadError}
+              onRetry={() => setReloadKey((key) => key + 1)}
+            />
+          ) : null}
+
+          <InsightsPanel />
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {statCards.map((card) => (

@@ -2,23 +2,43 @@ import { Pool } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL ?? "";
 
-// 🔥 FIX: Use environment instead of string matching
-const isProduction = process.env.NODE_ENV === "production";
-const useSsl = isProduction;
+/**
+ * SSL is on for hosted databases (Supabase, Neon, Render) and off for localhost.
+ * Override explicitly with DATABASE_SSL=true|false.
+ */
+const resolveSsl = () => {
+  const forced = process.env.DATABASE_SSL?.toLowerCase();
+  if (forced === "true") return { rejectUnauthorized: false };
+  if (forced === "false") return false;
+
+  const isLocal = /@(localhost|127\.0\.0\.1)(:|\/|$)/.test(databaseUrl);
+  if (isLocal) return false;
+
+  const wantsSsl =
+    process.env.NODE_ENV === "production" ||
+    /supabase|neon\.tech|sslmode=require/i.test(databaseUrl);
+
+  return wantsSsl ? { rejectUnauthorized: false } : false;
+};
 
 export const db = new Pool({
   connectionString: databaseUrl || undefined,
-  ssl: useSsl
-    ? {
-        rejectUnauthorized: false
-      }
-    : false
+  ssl: resolveSsl(),
+  max: Number(process.env.DB_POOL_MAX || 10),
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000,
+  keepAlive: true
 });
 
+// Hosted Postgres (Supabase free tier especially) drops idle connections.
+// The pool replaces them automatically, so log the error instead of killing the server.
 db.on("error", (err) => {
-  console.error("Unexpected error on idle pg client", err);
-  process.exit(-1);
+  console.error("[db] idle client error (pool will reconnect):", err.message);
 });
+
+export const pingDatabase = async () => {
+  await db.query("SELECT 1");
+};
 
 const schemaSql = `
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -122,6 +142,18 @@ ALTER TABLE memory_embeddings ADD COLUMN IF NOT EXISTS style JSONB;
 
 CREATE INDEX IF NOT EXISTS idx_memory_user
 ON memory_embeddings(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_memory_user_type
+ON memory_embeddings(user_id, type);
+
+CREATE INDEX IF NOT EXISTS idx_content_user_created
+ON content(user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_content
+ON calendar(content_id);
+
+CREATE INDEX IF NOT EXISTS idx_users_email_lower
+ON users (LOWER(email));
 
 CREATE INDEX IF NOT EXISTS memory_embedding_idx
 ON memory_embeddings

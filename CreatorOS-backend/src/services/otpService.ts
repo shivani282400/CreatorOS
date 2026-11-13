@@ -2,7 +2,11 @@ import { createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto
 import type { FastifyInstance } from "fastify";
 import { db } from "../plugins/db";
 import { createUser, findUserByEmail, type UserProfile } from "./userService";
-import { sendOtpEmail, type OtpEmailSender } from "./emailService";
+import { isOtpEnabled, sendOtpEmail, type OtpEmailSender } from "./emailService";
+
+// The real provider-backed sender, captured at load time. A caller that injects its own
+// sender (tests) bypasses the "email provider configured" check below.
+const providerSender = sendOtpEmail;
 
 export const OTP_TTL_MS = 5 * 60 * 1000;
 export const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
@@ -43,6 +47,10 @@ export const requestOtp = async ({
   ip: string;
   sendEmail?: OtpEmailSender;
 }) => {
+  if (sendEmail === providerSender && !isOtpEnabled()) {
+    throw new OtpError("Email sign-in codes are not enabled. Please sign in with your password.", 503);
+  }
+
   const client = await db.connect();
   const code = generateCode();
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
@@ -52,16 +60,21 @@ export const requestOtp = async ({
     await client.query("BEGIN");
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [email]);
 
-    const [latest, emailWindow, ipWindow] = await Promise.all([
-      client.query("SELECT created_at FROM auth_otps WHERE email = $1 ORDER BY created_at DESC LIMIT 1", [email]),
-      client.query("SELECT COUNT(*)::int AS count FROM auth_otps WHERE email = $1 AND created_at > NOW() - INTERVAL '15 minutes'", [email]),
-      client.query("SELECT COUNT(*)::int AS count FROM auth_otps WHERE request_ip = $1 AND created_at > NOW() - INTERVAL '15 minutes'", [ip])
-    ]);
+    // Run one at a time: a single pg client cannot run queries concurrently (deprecated in pg 9).
+    const latest = await client.query("SELECT created_at FROM auth_otps WHERE email = $1 ORDER BY created_at DESC LIMIT 1", [email]);
+    const emailWindow = await client.query("SELECT COUNT(*)::int AS count FROM auth_otps WHERE email = $1 AND created_at > NOW() - INTERVAL '15 minutes'", [email]);
+    const ipWindow = await client.query("SELECT COUNT(*)::int AS count FROM auth_otps WHERE request_ip = $1 AND created_at > NOW() - INTERVAL '15 minutes'", [ip]);
+    // Global daily cap keeps a free email-provider quota from being exhausted.
+    const dailyWindow = await client.query("SELECT COUNT(*)::int AS count FROM auth_otps WHERE created_at > NOW() - INTERVAL '24 hours'");
 
     const lastRequestedAt = latest.rows[0]?.created_at ? new Date(latest.rows[0].created_at).getTime() : 0;
     const retryAfterSeconds = Math.ceil((OTP_RESEND_COOLDOWN_MS - (Date.now() - lastRequestedAt)) / 1000);
     if (retryAfterSeconds > 0) {
       throw new OtpError(`Please wait ${retryAfterSeconds} seconds before requesting another code`, 429);
+    }
+    const dailyLimit = Number(process.env.OTP_DAILY_LIMIT || 90);
+    if ((dailyWindow.rows[0]?.count ?? 0) >= dailyLimit) {
+      throw new OtpError("Email codes are unavailable right now. Please sign in with your password.", 429);
     }
     if (emailWindow.rows[0].count >= 5 || ipWindow.rows[0].count >= 20) {
       throw new OtpError("Too many verification requests. Please try again later.", 429);
@@ -151,7 +164,7 @@ export const verifyOtp = async ({ email, code }: { email: string; code: string }
 };
 
 export const createSession = async (app: FastifyInstance, user: UserProfile) => {
-  const accessToken = app.jwt.sign({ id: user.id, email: user.email }, { expiresIn: "15m" });
+  const accessToken = app.jwt.sign({ id: user.id, email: user.email }, { expiresIn: (process.env.ACCESS_TOKEN_TTL || "15m") as string });
   const refreshToken = randomBytes(48).toString("base64url");
   const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);
   await db.query(
@@ -163,6 +176,7 @@ export const createSession = async (app: FastifyInstance, user: UserProfile) => 
 
 export const rotateSession = async (app: FastifyInstance, refreshToken: string) => {
   const client = await db.connect();
+  let committed = false;
   try {
     await client.query("BEGIN");
     const result = await client.query(
@@ -175,9 +189,12 @@ export const rotateSession = async (app: FastifyInstance, refreshToken: string) 
     if (!session) throw new OtpError("Session expired. Please sign in again.", 401);
     await client.query("UPDATE auth_refresh_sessions SET revoked_at = NOW() WHERE id = $1", [session.id]);
     await client.query("COMMIT");
-    return createSession(app, session as UserProfile);
+    committed = true;
+    // NOTE: session.id is the refresh-session row id. The user's id is session.user_id.
+    // Using the wrong one here would mint tokens for a different user.
+    return createSession(app, { ...session, id: session.user_id } as UserProfile);
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (!committed) await client.query("ROLLBACK");
     throw error;
   } finally {
     client.release();

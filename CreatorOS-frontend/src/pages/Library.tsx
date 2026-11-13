@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import PageWrapper from "../components/PageWrapper";
-import { authFetch } from "../utils/api";
+import { authFetch, describeError } from "../utils/api";
+import ExportMenu from "../components/ui/ExportMenu"
+import { contentExportActions } from "../components/ui/contentExport";
+import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 import { getAIScore } from "../utils/aiScore";
 import { groupContentByParent } from "../utils/groupContent";
 import ContentGroup from "../components/library/ContentGroup";
@@ -31,13 +35,23 @@ export default function Library() {
 
   const targetContentId = routeId ? Number(routeId) : null;
 
+  const [loadError, setLoadError] = useState("");
+
   const fetchContent = async () => {
+    setLoadError("");
+
     try {
       const res = await authFetch("/content");
+
+      if (!res.ok) {
+        throw new Error("We couldn't load your content library.");
+      }
+
       const result = await res.json();
       setContent(result.data ?? []);
     } catch (error) {
       console.error("Failed to fetch content", error);
+      setLoadError(describeError(error, "We couldn't load your content library."));
     } finally {
       setLoading(false);
     }
@@ -179,7 +193,7 @@ export default function Library() {
       }
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "Could not generate a similar variation");
+      toast.error(describeError(error, "Could not generate a similar variation"));
     } finally {
       setLoadingId(null);
     }
@@ -267,7 +281,13 @@ export default function Library() {
   };
 
   if (loading) {
-    return <div>Loading content...</div>;
+    return (
+      <MainLayout>
+        <PageWrapper>
+          <LoadingState label="Loading your library..." />
+        </PageWrapper>
+      </MainLayout>
+    );
   }
 
   return (
@@ -336,9 +356,28 @@ export default function Library() {
               />
             </div>
 
-            {content.length === 0 ? (
-              <div className="premium-card mt-8 p-10 text-center text-gray-400">
-                No content yet.
+            {loadError ? (
+              <div className="mt-8">
+                <ErrorState
+                  title="Couldn't load your library"
+                  message={loadError}
+                  onRetry={() => {
+                    setLoading(true);
+                    void fetchContent();
+                  }}
+                />
+              </div>
+            ) : content.length === 0 ? (
+              <div className="mt-8">
+                <EmptyState
+                  title="Your library is empty"
+                  description="Generate a draft and save it, and it will show up here, grouped with similar versions."
+                  action={
+                    <button type="button" onClick={() => navigate("/generate")} className="btn-primary">
+                      Generate content
+                    </button>
+                  }
+                />
               </div>
             ) : null}
 
@@ -381,8 +420,13 @@ export default function Library() {
             {selected ? (
               <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
                 <div className="max-h-[80vh] w-[600px] overflow-y-auto rounded-xl border border-white/10 bg-[rgba(12,12,15,0.96)] p-6 shadow-2xl">
-                  <h2 className="text-xl font-semibold">{selected.topic}</h2>
-                  <p className="text-sm text-gray-400">{selected.platform}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-semibold">{selected.topic}</h2>
+                      <p className="text-sm text-gray-400">{selected.platform}</p>
+                    </div>
+                    <ExportMenu actions={contentExportActions(selected)} />
+                  </div>
 
                   <div className="mt-4">
                     <h4 className="font-medium">Script</h4>

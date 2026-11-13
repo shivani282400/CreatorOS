@@ -2,13 +2,13 @@ export const generateEmbedding = async (text: string): Promise<number[]> => {
   const providers = [
     {
       name: "OpenAI",
-      url: "https://api.openai.com/v1/embeddings",
+      url: `${process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"}/embeddings`,
       key: process.env.OPENAI_API_KEY,
       model: "text-embedding-3-small"
     },
     {
       name: "OpenRouter",
-      url: "https://openrouter.ai/api/v1/embeddings",
+      url: `${process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1"}/embeddings`,
       key: process.env.OPENROUTER_API_KEY,
       model: "openai/text-embedding-3-small"
     }
@@ -34,7 +34,8 @@ export const generateEmbedding = async (text: string): Promise<number[]> => {
         body: JSON.stringify({
           input: text,
           model: provider.model
-        })
+        }),
+        signal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS || 30_000))
       });
 
       const data = await response.json();

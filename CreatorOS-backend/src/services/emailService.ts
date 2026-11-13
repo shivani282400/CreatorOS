@@ -1,9 +1,13 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 export type OtpEmailSender = (input: {
   to: string;
   code: string;
 }) => Promise<void>;
+
+export type EmailProvider = "smtp" | "brevo" | "resend";
+
+const SUBJECT = "Your CreatorOS verification code";
 
 const otpEmailHtml = (code: string) => `
   <div style="margin:0;padding:32px 16px;background:#0b1020;color:#ffffff;font-family:Arial,sans-serif">
@@ -17,24 +21,136 @@ const otpEmailHtml = (code: string) => `
     </div>
   </div>`;
 
-export const sendOtpEmail: OtpEmailSender = async ({ to, code }) => {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL;
+const otpEmailText = (code: string) =>
+  `CreatorOS verification code: ${code}\n\nThis code expires in 5 minutes. Do not share it with anyone. If you did not request this code, you can safely ignore this email.`;
 
-  if (!apiKey || !from) {
-    throw new Error("Email delivery is not configured");
-  }
+/* ---------------------------- provider config ---------------------------- */
 
-  const resend = new Resend(apiKey);
-  const result = await resend.emails.send({
-    from,
-    to,
-    subject: "Your CreatorOS verification code",
-    html: otpEmailHtml(code),
-    text: `CreatorOS verification code: ${code}\n\nThis code expires in 5 minutes. Do not share it with anyone. If you did not request this code, you can safely ignore this email.`
+const smtpConfig = () => {
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER;
+  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  if (!user || !rawPass) return null;
+
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = Number(process.env.SMTP_PORT || 465);
+  const secure = process.env.SMTP_SECURE ? process.env.SMTP_SECURE === "true" : port === 465;
+
+  return {
+    host,
+    port,
+    secure,
+    user,
+    // Google shows app passwords as "abcd efgh ijkl mnop"; the spaces are not part of it.
+    pass: rawPass.replace(/\s+/g, ""),
+    from: process.env.SMTP_FROM || `CreatorOS <${user}>`
+  };
+};
+
+const brevoConfigured = () => Boolean(process.env.BREVO_API_KEY && process.env.BREVO_SENDER_EMAIL);
+const resendConfigured = () => Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
+
+/** Which provider will be used, or null when no email delivery is configured. */
+export const getEmailProvider = (): EmailProvider | null => {
+  const forced = process.env.EMAIL_PROVIDER?.toLowerCase();
+
+  if (forced === "smtp") return smtpConfig() ? "smtp" : null;
+  if (forced === "brevo") return brevoConfigured() ? "brevo" : null;
+  if (forced === "resend") return resendConfigured() ? "resend" : null;
+
+  if (brevoConfigured()) return "brevo";
+  if (resendConfigured()) return "resend";
+  if (smtpConfig()) return "smtp";
+  return null;
+};
+
+/** OTP login is available only when a provider is configured and it has not been switched off. */
+export const isOtpEnabled = () => process.env.OTP_ENABLED !== "false" && getEmailProvider() !== null;
+
+/* ------------------------------- senders -------------------------------- */
+
+const sendViaSmtp: OtpEmailSender = async ({ to, code }) => {
+  const config = smtpConfig();
+  if (!config) throw new Error("SMTP is not configured");
+
+  const transporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: { user: config.user, pass: config.pass },
+    // Fail fast: some hosts (e.g. Render free tier) silently block SMTP ports.
+    connectionTimeout: 8_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 12_000
   });
 
-  if (result.error) {
-    throw new Error("Email delivery provider rejected the request");
+  await transporter.sendMail({
+    from: config.from,
+    to,
+    subject: SUBJECT,
+    html: otpEmailHtml(code),
+    text: otpEmailText(code)
+  });
+};
+
+const sendViaBrevo: OtpEmailSender = async ({ to, code }) => {
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": process.env.BREVO_API_KEY as string,
+      "content-type": "application/json",
+      accept: "application/json"
+    },
+    body: JSON.stringify({
+      sender: {
+        name: process.env.BREVO_SENDER_NAME || "CreatorOS",
+        email: process.env.BREVO_SENDER_EMAIL
+      },
+      to: [{ email: to }],
+      subject: SUBJECT,
+      htmlContent: otpEmailHtml(code),
+      textContent: otpEmailText(code)
+    }),
+    signal: AbortSignal.timeout(10_000)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Brevo rejected the request (${response.status}): ${await response.text()}`);
+  }
+};
+
+const sendViaResend: OtpEmailSender = async ({ to, code }) => {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      from: process.env.RESEND_FROM_EMAIL,
+      to: [to],
+      subject: SUBJECT,
+      html: otpEmailHtml(code),
+      text: otpEmailText(code)
+    }),
+    signal: AbortSignal.timeout(10_000)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Resend rejected the request (${response.status}): ${await response.text()}`);
+  }
+};
+
+export const sendOtpEmail: OtpEmailSender = async (input) => {
+  const provider = getEmailProvider();
+
+  try {
+    if (provider === "brevo") return await sendViaBrevo(input);
+    if (provider === "resend") return await sendViaResend(input);
+    if (provider === "smtp") return await sendViaSmtp(input);
+    throw new Error("No email provider is configured");
+  } catch (error) {
+    // The real reason goes to the server log only; the API returns a generic message.
+    console.error(`[otp] email send failed via ${provider ?? "none"}:`, error);
+    throw error;
   }
 };

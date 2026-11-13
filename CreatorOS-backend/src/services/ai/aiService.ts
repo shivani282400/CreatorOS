@@ -1,5 +1,5 @@
-import { generateWithGroq } from "./groq";
-import { generateWithOpenRouter } from "./openrouter";
+import { generateWithGroq, isGroqConfigured, streamWithGroq } from "./groq";
+import { generateWithOpenRouter, isOpenRouterConfigured } from "./openrouter";
 import { AIContentSchema, type AIContent } from "../../utils/aiSchema";
 import { cleanAIOutput } from "../../utils/cleanAIOutput";
 
@@ -205,10 +205,111 @@ const generateWithProvider = async (
 };
 
 export const generateAI = async (prompt: string): Promise<AIContent> => {
-  try {
-    return await generateWithProvider("Groq", generateWithGroq, prompt);
-  } catch (error) {
-    console.log("Groq failed → switching to OpenRouter");
-    return await generateWithProvider("OpenRouter", generateWithOpenRouter, prompt);
+  if (!isGroqConfigured() && !isOpenRouterConfigured()) {
+    throw new Error("No AI provider is configured. Set GROQ_API_KEY or OPENROUTER_API_KEY.");
   }
+
+  // Use whichever providers are configured, Groq first.
+  const providers: Array<[string, AIProvider]> = [];
+  if (isGroqConfigured()) providers.push(["Groq", generateWithGroq]);
+  if (isOpenRouterConfigured()) providers.push(["OpenRouter", generateWithOpenRouter]);
+
+  const failures: string[] = [];
+
+  for (const [name, generator] of providers) {
+    try {
+      return await generateWithProvider(name, generator, prompt);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      failures.push(`${name}: ${reason}`);
+      console.log(`${name} failed${providers.length > 1 ? " → trying next provider" : ""}:`, reason);
+    }
+  }
+
+  // Keep every provider's reason so the caller can tell a retired model from a bad key or a rate limit.
+  throw new Error(failures.join(" | ") || "AI generation failed");
+};
+
+/**
+ * Pulls the (possibly still incomplete) value of the "script" field out of a partially
+ * streamed JSON document, so the UI can show text as it is being written.
+ */
+export const extractPartialScript = (raw: string): string => {
+  const key = /"script"\s*:\s*"/.exec(raw);
+  if (!key) return "";
+
+  const escapes: Record<string, string> = {
+    n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", '"': '"', "\\": "\\", "/": "/"
+  };
+
+  let index = key.index + key[0].length;
+  let out = "";
+
+  while (index < raw.length) {
+    const char = raw[index];
+
+    if (char === '"') break; // end of the script string
+
+    if (char === "\\") {
+      const next = raw[index + 1];
+      if (next === undefined) break; // escape sequence not complete yet
+
+      if (next === "u") {
+        const hex = raw.slice(index + 2, index + 6);
+        if (hex.length < 4) break;
+        out += String.fromCharCode(parseInt(hex, 16));
+        index += 6;
+        continue;
+      }
+
+      out += escapes[next] ?? next;
+      index += 2;
+      continue;
+    }
+
+    out += char;
+    index += 1;
+  }
+
+  return out;
+};
+
+/**
+ * Streams generation. `onScript` receives the full script-so-far each time it grows.
+ * Falls back to the regular (non-streaming, retrying) path if streaming is unavailable
+ * or the streamed output does not validate.
+ */
+export const generateAIStream = async (
+  prompt: string,
+  onScript: (scriptSoFar: string) => void,
+  signal?: AbortSignal
+): Promise<AIContent> => {
+  if (isGroqConfigured()) {
+    try {
+      let raw = "";
+      let lastLength = 0;
+
+      await streamWithGroq(
+        prompt,
+        (token) => {
+          raw += token;
+          const script = extractPartialScript(raw);
+          if (script.length > lastLength) {
+            lastLength = script.length;
+            onScript(script);
+          }
+        },
+        signal
+      );
+
+      return parseAIResponse(raw);
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      console.log("Groq stream failed → falling back to standard generation:", error instanceof Error ? error.message : error);
+    }
+  }
+
+  const content = await generateAI(prompt);
+  onScript(content.script);
+  return content;
 };

@@ -9,6 +9,16 @@ export const scheduleContent = async (
 ) => {
   const client = (app as FastifyInstance & { pg?: typeof db }).pg ?? db;
 
+  // Only schedule content the user owns (or legacy rows that have no owner yet).
+  const owned = await client.query(
+    "SELECT id FROM content WHERE id = $1 AND (user_id = $2 OR user_id IS NULL)",
+    [contentId, userId]
+  );
+
+  if (!owned.rows[0]) {
+    return null;
+  }
+
   await client.query(
     `
     UPDATE content

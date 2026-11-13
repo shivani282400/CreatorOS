@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   ChevronDown,
   Sparkles,
@@ -10,12 +10,17 @@ import {
   MessageSquareText,
   CheckCircle2,
   Save,
+  Square,
   Upload
 } from "lucide-react"
 import { toast } from "sonner"
 import MainLayout from "../layouts/MainLayout"
 import PageWrapper from "../components/PageWrapper"
-import { authFetch } from "../utils/api"
+import { authFetch, describeError, readJson } from "../utils/api"
+import { readSse } from "../utils/sse"
+import ExportMenu from "../components/ui/ExportMenu"
+import { contentExportActions } from "../components/ui/contentExport"
+import { ErrorState } from "../components/ui/States"
 
 const PROFILE_STORAGE_KEY = "creator_profile"
 
@@ -220,9 +225,110 @@ export default function Generate() {
   const [brandUploadStatus, setBrandUploadStatus] = useState("")
   const [isSaved, setIsSaved] = useState(false)
   const [generationMeta, setGenerationMeta] = useState<{ usedBrand: boolean; usedMemory: number } | null>(null)
+  const [streamMode, setStreamMode] = useState(true)
+  const [stage, setStage] = useState("")
+  const [genError, setGenError] = useState("")
+  const abortRef = useRef<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
+  // Cancel an in-flight generation if the page is left.
+  useEffect(() => () => abortRef.current?.abort(), [])
+
   const hasOutput = Boolean(script || hooks.length || captions.length || threads.length)
+
+  const requestBody = () =>
+    JSON.stringify({
+      topic,
+      platform: platform || onboardingPreferences?.platform || "YouTube",
+      niche: niche || onboardingPreferences?.niche || "general",
+      tone: tone || onboardingPreferences?.tone || "educational",
+      goal,
+      audience,
+      contentType: type,
+      useBrandVoice,
+      save: false
+    })
+
+  const applyResult = (data: GeneratedContent, meta?: { usedBrand: boolean; usedMemory: number } | null) => {
+    setScript(data.script)
+    setHooks(data.hooks)
+    setCaptions(data.captions)
+    setThreads(data.threads)
+    setScore(data.score)
+    setAnalysisSummary(data.analysis.summary)
+    setAnalysisImprovements(data.analysis.improvements)
+    setIsSaved(false)
+    setGenerationMeta(meta || null)
+  }
+
+  const clearOutput = () => {
+    setScript("")
+    setHooks([])
+    setCaptions([])
+    setThreads([])
+    setScore(null)
+    setAnalysisSummary("")
+    setAnalysisImprovements([])
+    setIsSaved(false)
+    setGenerationMeta(null)
+  }
+
+  const runStandard = async (signal: AbortSignal) => {
+    setStage("Writing your draft...")
+
+    const res = await authFetch("/ai/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: requestBody(),
+      signal
+    })
+
+    const result = await readJson<{ success?: boolean; data?: GeneratedContent; meta?: { usedBrand: boolean; usedMemory: number }; error?: string }>(res)
+
+    if (!res.ok || !result?.success || !result.data) {
+      throw new Error(result?.error || "Generation failed")
+    }
+
+    applyResult(result.data, result.meta)
+  }
+
+  const runStream = async (signal: AbortSignal) => {
+    const res = await authFetch("/ai/generate/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: requestBody(),
+      signal
+    })
+
+    // Validation, auth and rate-limit problems come back as ordinary JSON before any streaming starts.
+    if (!res.ok || !res.headers.get("content-type")?.includes("text/event-stream")) {
+      const result = await readJson<{ error?: string }>(res)
+      throw Object.assign(new Error(result?.error || "Generation failed"), { fromServer: true })
+    }
+
+    clearOutput()
+    let finished = false
+
+    for await (const { event, data } of readSse(res)) {
+      if (event === "status") {
+        setStage(data.stage || "")
+        if (typeof data.usedMemory === "number") {
+          setGenerationMeta({ usedBrand: Boolean(data.usedBrand), usedMemory: data.usedMemory })
+        }
+      } else if (event === "delta") {
+        setScript(data.text || "")
+      } else if (event === "done") {
+        applyResult(data.data as GeneratedContent, data.meta)
+        finished = true
+      } else if (event === "error") {
+        throw Object.assign(new Error(data.error || "Generation failed"), { fromServer: true })
+      }
+    }
+
+    if (!finished && !signal.aborted) {
+      throw new Error("The connection closed before the draft finished.")
+    }
+  }
 
   const generateContent = async () => {
     if (!topic.trim()) {
@@ -230,53 +336,50 @@ export default function Generate() {
       return
     }
 
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setLoading(true)
+    setGenError("")
+    setStage("")
 
     try {
-      const res = await authFetch("/ai/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          topic,
-          platform: platform || onboardingPreferences?.platform || "YouTube",
-          niche: niche || onboardingPreferences?.niche || "general",
-          tone: tone || onboardingPreferences?.tone || "educational",
-          goal,
-          audience,
-          contentType: type,
-          useBrandVoice,
-          save: false
-        })
-      })
-
-      const result = await res.json()
-
-      if (!res.ok || !result.success || !result.data) {
-        throw new Error(result.error || "Generation failed")
+      try {
+        if (streamMode) {
+          await runStream(controller.signal)
+        } else {
+          await runStandard(controller.signal)
+        }
+      } catch (streamError) {
+        // If streaming itself is unavailable (network or proxy trouble), fall back to the normal request once.
+        const fromServer = Boolean((streamError as { fromServer?: boolean })?.fromServer)
+        if (streamMode && !fromServer && !controller.signal.aborted) {
+          toast.message("Live streaming isn't available here. Switching to standard mode.")
+          clearOutput()
+          await runStandard(controller.signal)
+        } else {
+          throw streamError
+        }
       }
-
-      const data = result.data as GeneratedContent
-
-      setScript(data.script)
-      setHooks(data.hooks)
-      setCaptions(data.captions)
-      setThreads(data.threads)
-      setScore(data.score)
-      setAnalysisSummary(data.analysis.summary)
-      setAnalysisImprovements(data.analysis.improvements)
-      setIsSaved(false)
-      setGenerationMeta(result.meta || null)
 
       toast.success("Draft generated")
     } catch (err) {
-      console.error("Generation failed", err)
-      toast.error(err instanceof Error ? err.message : "Generation failed")
+      if (controller.signal.aborted) {
+        toast.message("Generation stopped")
+      } else {
+        console.error("Generation failed", err)
+        const message = describeError(err, "Generation failed")
+        setGenError(message)
+        toast.error(message)
+      }
     } finally {
       setLoading(false)
+      setStage("")
+      abortRef.current = null
     }
   }
+
+  const stopGeneration = () => abortRef.current?.abort()
 
   const saveContent = async () => {
     if (!hasOutput || !topic.trim()) {
@@ -319,7 +422,7 @@ export default function Generate() {
       toast.success("Saved to Library")
     } catch (error) {
       console.error("Save failed", error)
-      toast.error("Save failed")
+      toast.error(describeError(error, "Save failed"))
     } finally {
       setSaving(false)
     }
@@ -623,6 +726,17 @@ export default function Generate() {
                   </div>
                 </div>
 
+                <label className="flex cursor-pointer items-center gap-3 text-sm text-white/60">
+                  <input
+                    type="checkbox"
+                    checked={streamMode}
+                    onChange={(event) => setStreamMode(event.target.checked)}
+                    disabled={loading}
+                    className="h-4 w-4 accent-indigo-500"
+                  />
+                  Stream live: watch the script appear as it&apos;s written
+                </label>
+
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button
                     onClick={generateContent}
@@ -632,6 +746,17 @@ export default function Generate() {
                     <Sparkles className="h-5 w-5" />
                     {loading ? "Generating Draft..." : "Generate Draft"}
                   </button>
+
+                  {loading ? (
+                    <button
+                      type="button"
+                      onClick={stopGeneration}
+                      className="flex h-16 min-w-[140px] items-center justify-center gap-2 rounded-2xl border border-rose-400/30 bg-rose-500/10 px-6 text-base font-semibold text-rose-200 transition hover:bg-rose-500/20"
+                    >
+                      <Square className="h-4 w-4" />
+                      Stop
+                    </button>
+                  ) : null}
 
                   <button
                     onClick={saveContent}
@@ -654,20 +779,37 @@ export default function Generate() {
                       </p>
                     </div>
 
-                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-white/45">
-                      {isSaved ? "Saved" : hasOutput ? "Draft" : "Waiting"}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {hasOutput && !loading ? (
+                        <ExportMenu
+                          actions={contentExportActions({
+                            topic,
+                            platform,
+                            script,
+                            hooks,
+                            captions,
+                            threads,
+                            score,
+                            analysis: { summary: analysisSummary, improvements: analysisImprovements }
+                          })}
+                        />
+                      ) : null}
+
+                      <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-white/45">
+                        {loading ? "Writing" : isSaved ? "Saved" : hasOutput ? "Draft" : "Waiting"}
+                      </span>
+                    </div>
                   </div>
 
-                  {loading ? (
+                  {loading && !script ? (
                     <div className="flex flex-1 items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/[0.02]">
                       <div className="space-y-3 text-center">
                         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-200">
                           <Sparkles className="h-6 w-6 animate-pulse" />
                         </div>
-                        <p className="text-base font-medium text-white/70">Generating your draft</p>
+                        <p className="text-base font-medium text-white/70">{stage || "Generating your draft"}</p>
                         <p className="text-sm text-white/35">
-                          The AI is building script, hooks, captions, and threads for review.
+                          The AI is building script, hooks, captions, and threads for review. Free servers can take a little longer on the first request.
                         </p>
                       </div>
                     </div>
@@ -677,12 +819,14 @@ export default function Generate() {
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="space-y-1">
                             <p className="text-sm font-medium text-white">
-                              {isSaved ? "Saved version" : "Unsaved draft"}
+                              {loading ? "Writing your draft..." : isSaved ? "Saved version" : "Unsaved draft"}
                             </p>
                             <p className="text-sm text-white/45">
-                              {isSaved
-                                ? "This version is already in your Library."
-                                : "Review the output, then save it when you’re happy."}
+                              {loading
+                                ? stage || "Hooks, captions and the score appear when the script is finished."
+                                : isSaved
+                                  ? "This version is already in your Library."
+                                  : "Review the output, then save it when you’re happy."}
                             </p>
                           </div>
 
@@ -713,24 +857,34 @@ export default function Generate() {
                         />
                       </section>
 
-                      <ResultBlock
-                        title="Hooks"
-                        items={hooks}
-                        emptyText="No hooks generated yet."
-                      />
+                      {!loading ? (
+                        <>
+                          <ResultBlock
+                            title="Hooks"
+                            items={hooks}
+                            emptyText="No hooks generated yet."
+                          />
 
-                      <ResultBlock
-                        title="Captions"
-                        items={captions}
-                        emptyText="No captions generated yet."
-                      />
+                          <ResultBlock
+                            title="Captions"
+                            items={captions}
+                            emptyText="No captions generated yet."
+                          />
 
-                      <ResultBlock
-                        title="Threads"
-                        items={threads}
-                        emptyText="No threads generated yet."
-                      />
+                          <ResultBlock
+                            title="Threads"
+                            items={threads}
+                            emptyText="No threads generated yet."
+                          />
+                        </>
+                      ) : null}
                     </div>
+                  ) : genError ? (
+                    <ErrorState
+                      title="We couldn't generate your draft"
+                      message={genError}
+                      onRetry={generateContent}
+                    />
                   ) : (
                     <div className="flex flex-1 items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/[0.02] px-8">
                       <div className="max-w-sm space-y-3 text-center">

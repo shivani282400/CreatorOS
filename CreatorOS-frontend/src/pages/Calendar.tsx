@@ -3,7 +3,19 @@ import { Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import PageWrapper from "../components/PageWrapper";
-import { authFetch } from "../utils/api";
+import { authFetch, describeError } from "../utils/api";
+import ExportMenu, { type ExportAction } from "../components/ui/ExportMenu";
+import { ErrorState, LoadingState } from "../components/ui/States";
+import {
+  calendarToCsv,
+  calendarToHtml,
+  calendarToIcs,
+  calendarToMarkdown,
+  copyText,
+  downloadFile,
+  printAsPdf,
+  type CalendarExportRow
+} from "../utils/exporters";
 
 type ContentItem = {
   id: number
@@ -24,6 +36,10 @@ type CalendarRecord = {
   created_at: string
   topic: string
   platform: string
+  views?: number | null
+  likes?: number | null
+  comments?: number | null
+  shares?: number | null
 }
 
 type CalendarEvent = CalendarRecord & {
@@ -106,12 +122,17 @@ export default function CalendarPage() {
   const [scheduleDate, setScheduleDate] = useState<string | null>(null);
   const [selectedContentId, setSelectedContentId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const fetchCalendar = async () => {
     const [contentRes, calendarRes] = await Promise.all([
       authFetch("/content"),
       authFetch("/calendar")
     ]);
+
+    if (!contentRes.ok || !calendarRes.ok) {
+      throw new Error("We couldn't load your calendar.");
+    }
 
     const contentResult = await contentRes.json();
     const calendarResult = await calendarRes.json();
@@ -148,19 +169,78 @@ export default function CalendarPage() {
     setEvents(mergedEvents);
   };
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        await fetchCalendar();
-      } catch (err) {
-        console.error("Calendar fetch failed", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const load = async () => {
+    setLoading(true);
+    setLoadError("");
 
-    load();
+    try {
+      await fetchCalendar();
+    } catch (err) {
+      console.error("Calendar fetch failed", err);
+      setLoadError(describeError(err, "We couldn't load your calendar."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const exportRows = (): CalendarExportRow[] =>
+    events
+      .map((event) => {
+        const d = new Date(event.scheduled_date);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        return {
+          date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+          topic: event.topic,
+          platform: event.platform,
+          status: event.status,
+          script: event.script,
+          views: event.views ?? undefined,
+          likes: event.likes ?? undefined,
+          comments: event.comments ?? undefined,
+          shares: event.shares ?? undefined
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+  const calendarExportActions: ExportAction[] = [
+    {
+      key: "csv",
+      label: "Download CSV",
+      hint: "Import into Notion databases or Google Sheets",
+      icon: "download",
+      successMessage: "CSV downloaded",
+      run: () => downloadFile("creatoros-calendar.csv", calendarToCsv(exportRows()), "text/csv")
+    },
+    {
+      key: "ics",
+      label: "Download .ics",
+      hint: "Add to Google, Apple or Outlook Calendar",
+      icon: "download",
+      successMessage: "Calendar file downloaded",
+      run: () => downloadFile("creatoros-calendar.ics", calendarToIcs(exportRows()), "text/calendar")
+    },
+    {
+      key: "copy-md",
+      label: "Copy for Notion",
+      hint: "Markdown table: paste into a Notion page",
+      icon: "copy",
+      successMessage: "Table copied. Paste it into Notion.",
+      run: () => copyText(calendarToMarkdown(exportRows()))
+    },
+    {
+      key: "pdf",
+      label: "Save as PDF",
+      hint: "Opens print dialog → Save as PDF",
+      icon: "pdf",
+      successMessage: "Choose “Save as PDF” in the print dialog",
+      run: () => printAsPdf("CreatorOS content calendar", calendarToHtml(exportRows()))
+    }
+  ];
 
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
@@ -248,7 +328,25 @@ export default function CalendarPage() {
   };
 
   if (loading) {
-    return <div>Loading calendar...</div>;
+    return (
+      <MainLayout>
+        <PageWrapper>
+          <LoadingState label="Loading your calendar..." />
+        </PageWrapper>
+      </MainLayout>
+    );
+  }
+
+  if (loadError && events.length === 0 && content.length === 0) {
+    return (
+      <MainLayout>
+        <PageWrapper>
+          <div className="mx-auto max-w-3xl pt-10">
+            <ErrorState title="Couldn't load your calendar" message={loadError} onRetry={() => void load()} />
+          </div>
+        </PageWrapper>
+      </MainLayout>
+    );
   }
 
   return (
@@ -282,6 +380,7 @@ export default function CalendarPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                <ExportMenu actions={calendarExportActions} label="Export" disabled={events.length === 0} />
                 <button onClick={prev} className="rounded-xl bg-white/10 px-3 py-2 text-sm transition-all duration-200 hover:bg-white/[0.14]">←</button>
 
                 <span className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-gray-300">
